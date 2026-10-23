@@ -23,15 +23,92 @@ A web application that helps hospitals and blood donors coordinate. Donors regis
 
 ```
 blood-donation-match/
-├── backend/                # FastAPI application
-│   ├── app/
-│   │   ├── main.py         # App entry point
-│   │   ├── routers/        # API route modules
-│   │   ├── models/         # Database models
-│   │   ├── schemas/        # Pydantic schemas
-│   │   └── core/           # Config, security, settings
-│   ├── requirements.txt
-│   └── .env.example
+├──backend/
+├── app/
+│   ├── main.py                  # FastAPI app, CORS, router registration
+│   │
+│   ├── core/                    # Cross-cutting setup
+│   │   ├── config.py            # Settings loaded from .env
+│   │   ├── security.py          # Password hashing, token creation/verification
+│   │   ├── permissions.py       # Role/permission rules (RBAC)
+│   │   └── logging.py           # Logging config (no passwords or sensitive data)
+│   │
+│   ├── db/
+│   │   ├── base.py              # Base model class
+│   │   └── session.py           # Database engine and session
+│   │
+│   ├── models/                  # Database tables (one per ERD entity)
+│   │   ├── user.py
+│   │   ├── donor_profile.py
+│   │   ├── hospital.py
+│   │   ├── hospital_user.py
+│   │   ├── donation_record.py
+│   │   ├── blood_request.py
+│   │   ├── donor_match.py
+│   │   ├── notification.py
+│   │   ├── blood_stock.py
+│   │   ├── stock_batch.py
+│   │   ├── consent_record.py
+│   │   └── audit_log.py
+│   │
+│   ├── schemas/                 # Pydantic request/response models and validation
+│   │   └── (one file per model above, plus auth.py and report.py)
+│   │
+│   ├── api/
+│   │   ├── deps.py              # Shared dependencies: current user, role checks, DB session
+│   │   └── v1/
+│   │       ├── router.py        # Combines all endpoint routers
+│   │       └── endpoints/
+│   │           ├── auth.py          # Register, login, password reset
+│   │           ├── users.py         # Own profile, preferences, account closure
+│   │           ├── donors.py        # Donor profile, availability, location preference
+│   │           ├── donations.py     # Donation history
+│   │           ├── hospitals.py     # Hospital access requests and verification
+│   │           ├── requests.py      # SOS requests and status lifecycle
+│   │           ├── matching.py      # Donor search and preliminary matches
+│   │           ├── notifications.py # Alerts, responses, failed-notification retry
+│   │           ├── stock.py         # Stock records, batches, thresholds
+│   │           ├── reminders.py     # Reminder preferences
+│   │           ├── reports.py       # Analytics and CSV export
+│   │           ├── admin.py         # Roles, accounts, configuration
+│   │           └── audit.py         # Audit log viewing
+│   │
+│   ├── services/                # Business logic (keeps endpoints thin)
+│   │   ├── auth_service.py
+│   │   ├── matching_service.py      # Rule-based preliminary matching
+│   │   ├── request_service.py       # Request lifecycle and expiry
+│   │   ├── notification_service.py  # Queue, send, record outcomes
+│   │   ├── stock_service.py         # Updates, shortage and stale checks
+│   │   ├── reminder_service.py      # Provisional reminder dates
+│   │   ├── analytics_service.py     # Report calculations
+│   │   ├── location_service.py      # Approximate proximity
+│   │   ├── consent_service.py       # Consent and preference enforcement
+│   │   └── audit_service.py         # Writes audit entries
+│   │
+│   ├── integrations/            # External services, isolated so they can be swapped
+│   │   ├── sms_provider.py
+│   │   ├── email_provider.py
+│   │   └── maps_provider.py
+│   │
+│   └── tasks/                   # Scheduled/background jobs
+│       ├── expire_requests.py
+│       └── send_reminders.py
+│
+├── migrations/                  # Database migrations (Alembic)
+├── tests/
+│   ├── conftest.py              # Test DB and synthetic data setup
+│   ├── test_auth.py
+│   ├── test_matching.py
+│   ├── test_requests.py
+│   ├── test_stock.py
+│   ├── test_reminders.py
+│   ├── test_reports.py
+│   ├── test_permissions.py      # Negative/authorization tests
+│   └── test_audit.py
+│
+├── requirements.txt
+├── .env.example
+|
 ├── frontend/               # React application
 │   ├── src/
 │   ├── public/
@@ -100,7 +177,6 @@ Copy the example file and fill in the values (ask the team lead for any secrets)
 cp .env.example .env
 
 # Windows
-copy .env.example .env
 ```
 
 **Start the server**
