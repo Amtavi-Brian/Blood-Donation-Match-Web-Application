@@ -177,7 +177,6 @@ Copy the example file and fill in the values (ask the team lead for any secrets)
 cp .env.example .env
 
 # Windows
-copy .env.example .env
 ```
 
 **Start the server**
