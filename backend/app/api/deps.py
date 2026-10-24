@@ -1,4 +1,4 @@
-import socket 
-website = input("Enter the website Url")
-socket_result =  socket.gethostbyname(website)
-print(f"The IP address of {website} is {socket_result}")
+
+from app.db.session import get_db
+
+__all__ = ["get_db"]
