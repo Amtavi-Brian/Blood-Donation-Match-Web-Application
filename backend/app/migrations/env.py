@@ -12,6 +12,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings
 from app.db.base import Base
+import app.models.user
+import app.models.donor_profile
+import app.models.hospital
+import app.models.hospital_user
 
 config = context.config
 

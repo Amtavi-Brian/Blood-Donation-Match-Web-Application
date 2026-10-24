@@ -1,51 +1,49 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.schemas import UserCreate, UserResponse, UserLogin, Token
+from app.api.deps import get_db
+from app.core.security import create_access_token
+from app.schemas.auth import UserCreate, UserLogin, UserResponse, Token
 from app.services import user_service
-from app.auth.security import create_access_token
 
-
-router = APIRouter(
-    prefix="/auth",
-    tags=["Authentication"]
-)
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
 @router.post(
     "/register",
     response_model=UserResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
 )
-def register(user: UserCreate, db: Session = Depends(get_db)):
-    new_user = user_service.create_user(db, user)
+def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    new_user = user_service.create_user(db, user_data)
 
     if new_user is None:
         raise HTTPException(
-            status_code=400,
-            detail="Username or email already exists"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
         )
 
     return new_user
 
+
 @router.post("/login", response_model=Token)
-def login(
-    user: UserLogin,
-    db: Session = Depends(get_db)
+def login(user_data: UserLogin, db: Session = Depends(get_db)):
+    authenticated_user = user_service.authenticate_user(
+        db,
+        str(user_data.email),
+        user_data.password,
+    )
 
-):
-    authenticate_user = user_service.authenticate_user(db, user.email, user.password) 
-
-    if authenticate_user is None:
+    if authenticated_user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
+            detail="Invalid email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(
-        {
-            "sub": authenticate_user.email
-        }
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
+    access_token = create_access_token(subject=str(authenticated_user.id))
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
