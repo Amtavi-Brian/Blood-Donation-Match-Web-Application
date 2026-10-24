@@ -326,7 +326,7 @@ The Software Requirements Specification (SRS), including requirements validation
 | Name | Role |
 |---|---|
 | Brian Amtavi | Backend |
-| Fiddel Omondi | Intergration/Frontend |
+| Fiddel Omondi | Intergration/Backend|
 | Mohamed Hassan | Frontend |
 | Lisa Wamuyu |Documentation/Database |
 | Mohamed Camara | Backend |
