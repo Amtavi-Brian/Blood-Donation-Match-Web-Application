@@ -1,28 +1,21 @@
-
-
-import sys
-from pathlib import Path
-from logging.config import fileConfig
-
-from alembic import context
-from sqlalchemy import engine_from_config, pool
-
-# Add the backend directory to Python's import path.
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
 from app.core.config import settings
 from app.db.base import Base
+from alembic import context
+from sqlalchemy import engine_from_config, pool
+from logging.config import fileConfig
+
+# Import every model so SQLAlchemy registers all tables.
 import app.models.user
 import app.models.donor_profile
 import app.models.hospital
 import app.models.hospital_user
+import app.models.blood_request
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Explicitly provide SQLAlchemy metadata to Alembic.
 target_metadata = Base.metadata
 
 

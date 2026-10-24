@@ -5,6 +5,10 @@ from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.models.blood_request import BloodRequest
 
 
 class Hospital(Base):
@@ -28,6 +32,11 @@ class Hospital(Base):
     )
 
     staff_members: Mapped[list["HospitalUser"]] = relationship(
+        back_populates="hospital",
+        cascade="all, delete-orphan",
+    )
+
+    blood_requests: Mapped[list["BloodRequest"]] = relationship(
         back_populates="hospital",
         cascade="all, delete-orphan",
     )
