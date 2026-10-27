@@ -93,3 +93,95 @@ def update_hospital(
 
     return hospital_service.update_hospital(db, hospital, hospital_data)
 
+
+@router.patch(
+    "/{hospital_id}/verification",
+    response_model=HospitalResponse,
+)
+def verify_hospital(
+    hospital_id: int,
+    is_verified: bool = Query(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can verify hospitals.",
+        )
+
+    hospital = hospital_service.set_hospital_verification(
+        db,
+        hospital_id,
+        is_verified,
+    )
+
+    if hospital is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hospital not found.",
+        )
+
+    return hospital
+
+
+@router.post(
+    "/{hospital_id}/staff/{user_id}/authorize",
+    response_model=HospitalStaffResponse,
+)
+def authorize_staff(
+    hospital_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can authorize hospital staff.",
+        )
+
+    staff_link = hospital_service.authorize_hospital_staff(
+        db,
+        hospital_id,
+        user_id,
+    )
+
+    if staff_link is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hospital or user not found.",
+        )
+
+    return staff_link
+
+
+@router.patch(
+    "/{hospital_id}/staff/{user_id}/authorization",
+    response_model=HospitalStaffResponse,
+)
+def revoke_staff_authorization(
+    hospital_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only administrators can revoke staff authorization.",
+        )
+
+    staff_link = hospital_service.revoke_hospital_staff(
+        db,
+        hospital_id,
+        user_id,
+    )
+
+    if staff_link is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Hospital staff association not found.",
+        )
+
+    return staff_link

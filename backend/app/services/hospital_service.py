@@ -5,8 +5,10 @@ from sqlalchemy.orm import Session
 
 from app.models.hospital import Hospital
 from app.models.hospital_user import HospitalUser
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.schemas.hospital import HospitalCreate, HospitalUpdate
+from app.models import user
+from app.schemas import hospital
 
 
 def create_hospital(db: Session, hospital_data: HospitalCreate) -> Hospital | None:
@@ -76,6 +78,7 @@ def get_hospital_staff(
     return list(db.scalars(query.order_by(HospitalUser.id)).all())
 
 
+
 def authorize_hospital_staff(
     db: Session,
     hospital_id: int,
@@ -85,6 +88,12 @@ def authorize_hospital_staff(
     user = db.get(User, user_id)
 
     if hospital is None or user is None:
+        return None
+
+    if not hospital.is_verified:
+        return None
+
+    if user.role != UserRole.HOSPITAL_STAFF or not user.is_active:
         return None
 
     existing = db.scalar(
@@ -109,3 +118,40 @@ def authorize_hospital_staff(
     db.refresh(staff_link)
     return staff_link
 
+
+
+def set_hospital_verification(
+    db: Session,
+    hospital_id: int,
+    is_verified: bool,
+) -> Hospital | None:
+    hospital = db.get(Hospital, hospital_id)
+
+    if hospital is None:
+        return None
+
+    hospital.is_verified = is_verified
+    db.commit()
+    db.refresh(hospital)
+    return hospital
+
+
+def revoke_hospital_staff(
+    db: Session,
+    hospital_id: int,
+    user_id: int,
+) -> HospitalUser | None:
+    staff_link = db.scalar(
+        select(HospitalUser).where(
+            HospitalUser.hospital_id == hospital_id,
+            HospitalUser.user_id == user_id,
+        )
+    )
+
+    if staff_link is None:
+        return None
+
+    staff_link.is_authorized = False
+    db.commit()
+    db.refresh(staff_link)
+    return staff_link

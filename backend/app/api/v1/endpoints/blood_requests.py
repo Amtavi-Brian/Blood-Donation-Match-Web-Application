@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
 from app.models.blood_request import BloodRequestStatus
+from app.models.hospital import Hospital
 from app.models.hospital_user import HospitalUser
 from app.models.user import User, UserRole
 from app.schemas.blood_request import (
@@ -11,6 +12,7 @@ from app.schemas.blood_request import (
     BloodRequestResponse,
     BloodRequestUpdate,
 )
+
 from app.services import blood_request_service
 
 router = APIRouter(
@@ -19,21 +21,27 @@ router = APIRouter(
 )
 
 
+
 def require_hospital_access(
     db: Session,
     user: User,
     hospital_id: int | None = None,
 ) -> int:
-    """Check that the user is authorized for the hospital."""
-    if user.role != UserRole.HOSPITAL_STAFF:
+    """Require active, authorized staff at a verified hospital."""
+    if user.role != UserRole.HOSPITAL_STAFF or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only hospital staff can manage blood requests.",
+            detail="Only active hospital staff can manage blood requests.",
         )
 
-    statement = select(HospitalUser).where(
-        HospitalUser.user_id == user.id,
-        HospitalUser.is_authorized.is_(True),
+    statement = (
+        select(HospitalUser)
+        .join(Hospital, Hospital.id == HospitalUser.hospital_id)
+        .where(
+            HospitalUser.user_id == user.id,
+            HospitalUser.is_authorized.is_(True),
+            Hospital.is_verified.is_(True),
+        )
     )
 
     if hospital_id is not None:
@@ -41,16 +49,20 @@ def require_hospital_access(
             HospitalUser.hospital_id == hospital_id
         )
 
-    association = db.scalars(statement.order_by(HospitalUser.id)).first()
+    association = db.scalars(
+        statement.order_by(HospitalUser.id)
+    ).first()
 
     if association is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are not authorized for this hospital.",
+            detail=(
+                "No authorized association with a verified hospital "
+                "was found."
+            ),
         )
 
     return association.hospital_id
-
 
 @router.post(
     "/",
