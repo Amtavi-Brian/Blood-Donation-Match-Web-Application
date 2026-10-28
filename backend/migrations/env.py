@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings
 from app.db.base import Base
-
+import app.models
 config = context.config
 
 if config.config_file_name is not None:
