@@ -101,6 +101,7 @@ def list_requests(
     )
 
 
+
 @router.get(
     "/{request_id}",
     response_model=BloodRequestResponse,
@@ -121,7 +122,22 @@ def read_request(
             detail="Blood request not found.",
         )
 
+    # Hide requests from unverified hospitals.
+    if not blood_request.hospital.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Blood request not found.",
+        )
+
+    # Hide cancelled requests from the general discovery endpoint.
+    if blood_request.status == BloodRequestStatus.CANCELLED:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Blood request not found.",
+        )
+
     return blood_request
+
 
 
 @router.patch(
@@ -149,6 +165,12 @@ def update_request(
         db,
         current_user,
         blood_request.hospital_id,
+    )
+
+    if blood_request.status != BloodRequestStatus.PENDING:
+        raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail="Only pending blood requests can be updated.",
     )
 
     return blood_request_service.update_blood_request(
