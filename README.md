@@ -109,13 +109,148 @@ blood-donation-match/
 ├── requirements.txt
 ├── .env.example
 |
-├── frontend/               # React application
-│   ├── src/
-│   ├── public/
-│   ├── package.json
-│   └── .env.example
+├── frontend/
+├── public/
+│   └── index.html, favicon, logo
+├── src/
+│   ├── main.jsx (or index.js)        # App entry point
+│   ├── App.jsx                       # Mounts the router and global providers
+│   │
+│   ├── assets/
+│   │   ├── images/                   # Landing hero image, illustrations
+│   │   └── icons/                    # Logo and custom icons
+│   │
+│   ├── styles/
+│   │   ├── global.css                # Resets, fonts, base styles
+│   │   └── theme.css                 # Colors (red, navy, green), spacing, shadows
+│   │
+│   ├── routes/
+│   │   ├── AppRoutes.jsx             # All routes in one place
+│   │   ├── ProtectedRoute.jsx        # Blocks users who are not logged in
+│   │   └── RoleRoute.jsx             # Allows only donor, hospital or admin
+│   │
+│   ├── layouts/
+│   │   ├── PublicLayout.jsx          # Navbar + footer for landing, login, register
+│   │   ├── DonorLayout.jsx           # Donor sidebar + top bar
+│   │   ├── HospitalLayout.jsx        # Hospital sidebar + top bar
+│   │   └── AdminLayout.jsx           # Admin sidebar + top bar
+│   │
+│   ├── pages/
+│   │   ├── public/
+│   │   │   ├── LandingPage.jsx
+│   │   │   ├── LoginPage.jsx
+│   │   │   └── RegisterPage.jsx      # Donor / Hospital tabs
+│   │   ├── donor/
+│   │   │   ├── DonorDashboard.jsx
+│   │   │   ├── MyProfile.jsx
+│   │   │   ├── UpdateAvailability.jsx
+│   │   │   ├── DonationHistory.jsx
+│   │   │   ├── SosAlerts.jsx
+│   │   │   ├── Reminders.jsx
+│   │   │   └── DonorSettings.jsx
+│   │   ├── hospital/
+│   │   │   ├── HospitalDashboard.jsx
+│   │   │   ├── RequestBlood.jsx
+│   │   │   ├── DonorSearch.jsx
+│   │   │   ├── BloodStock.jsx
+│   │   │   ├── RecordDonation.jsx
+│   │   │   ├── Analytics.jsx         # Tabs: Stock Levels, Donor Trends
+│   │   │   └── HospitalSettings.jsx
+│   │   ├── admin/
+│   │   │   ├── AdminDashboard.jsx
+│   │   │   ├── ManageHospitals.jsx
+│   │   │   ├── ManageUsers.jsx
+│   │   │   ├── VerifyHospitals.jsx
+│   │   │   ├── SystemAlerts.jsx
+│   │   │   ├── AdminReports.jsx
+│   │   │   └── AdminSettings.jsx
+│   │   ├── shared/
+│   │   │   └── NotificationsPage.jsx # All / Alerts / Reminders tabs
+│   │   └── NotFound.jsx
+│   │
+│   ├── components/
+│   │   ├── ui/                       # Generic reusable pieces
+│   │   │   ├── Button.jsx
+│   │   │   ├── Input.jsx
+│   │   │   ├── PasswordInput.jsx     # With show/hide eye icon
+│   │   │   ├── Select.jsx
+│   │   │   ├── Tabs.jsx
+│   │   │   ├── Modal.jsx
+│   │   │   ├── Badge.jsx             # Pending, Verified, Low, Medium
+│   │   │   ├── Card.jsx
+│   │   │   ├── Table.jsx
+│   │   │   ├── Loader.jsx
+│   │   │   └── Toast.jsx
+│   │   ├── navigation/
+│   │   │   ├── Navbar.jsx            # Public top menu
+│   │   │   ├── Sidebar.jsx           # Dark sidebar, items passed per role
+│   │   │   ├── Topbar.jsx            # Page title, bell, user avatar
+│   │   │   └── NotificationBell.jsx
+│   │   ├── dashboard/
+│   │   │   ├── StatCard.jsx          # Total Donations, Next Eligible Date, etc.
+│   │   │   ├── ActivityList.jsx      # Recent activity
+│   │   │   ├── NearbyHospitals.jsx
+│   │   │   └── QuickActions.jsx
+│   │   ├── sos/
+│   │   │   ├── SosAlertModal.jsx     # "Urgent Need for O+ Blood" Accept / Decline
+│   │   │   └── SosRequestForm.jsx
+│   │   ├── stock/
+│   │   │   ├── StockLevelBar.jsx     # A+, B-, O+ bars with units
+│   │   │   └── StockUpdateForm.jsx
+│   │   ├── donors/
+│   │   │   ├── DonorSearchFilters.jsx
+│   │   │   └── DonorResultCard.jsx
+│   │   ├── charts/
+│   │   │   ├── StockBarChart.jsx
+│   │   │   ├── DonationTrendChart.jsx
+│   │   │   └── DemandDonut.jsx
+│   │   └── forms/
+│   │       ├── LoginForm.jsx
+│   │       ├── DonorRegisterForm.jsx
+│   │       └── HospitalRegisterForm.jsx
+│   │
+│   ├── features/                     # Logic grouped by feature
+│   │   ├── auth/                     # AuthContext, useAuth, token handling
+│   │   ├── donors/                   # Donor hooks and helpers
+│   │   ├── requests/                 # SOS request hooks
+│   │   ├── stock/                    # Stock hooks
+│   │   ├── notifications/            # Notification hooks and polling
+│   │   ├── analytics/                # Report data hooks
+│   │   └── admin/                    # Admin hooks
+│   │
+│   ├── services/                     # All backend (FastAPI) calls
+│   │   ├── apiClient.js              # Base URL, auth header, error handling
+│   │   ├── authService.js
+│   │   ├── donorService.js
+│   │   ├── hospitalService.js
+│   │   ├── requestService.js
+│   │   ├── matchingService.js
+│   │   ├── stockService.js
+│   │   ├── notificationService.js
+│   │   ├── reportService.js
+│   │   └── adminService.js
+│   │
+│   ├── hooks/                        # Generic reusable hooks
+│   │   ├── useDebounce.js
+│   │   ├── useFetch.js
+│   │   └── useLocalStorage.js
+│   │
+│   ├── context/
+│   │   ├── AuthContext.jsx           # Logged-in user and role
+│   │   └── NotificationContext.jsx   # Unread count, new alerts
+│   │
+│   ├── utils/
+│   │   ├── constants.js              # Blood groups, request statuses, roles
+│   │   ├── validators.js             # Email, phone, password rules
+│   │   ├── formatters.js             # Dates, distances, units
+│   │   └── navConfig.js              # Sidebar menu items for each role
+│   │
+│   └── config/
+│       └── env.js                    # Reads API URL from .env
+│
+├── .env.example
+├── package.json
 └── README.md
-```
 
 ---
 
