@@ -10,6 +10,7 @@ from app.models.blood_request import (
 )
 from app.models.blood_stock import BloodStock
 from app.models.stock_batch import StockBatch
+from app.models.donation_record import DonationRecord
 
 __all__ = [
     "User",
@@ -23,4 +24,5 @@ __all__ = [
     "BloodRequestUrgency",
     "BloodStock",
     "StockBatch",
+    "DonationRecord",
 ]
