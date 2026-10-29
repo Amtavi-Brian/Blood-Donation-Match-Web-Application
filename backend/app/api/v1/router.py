@@ -9,6 +9,7 @@ from app.api.v1.endpoints import (
     hospitals,
     matching,
     stock,
+    donations,
 )
 
 api_router = APIRouter()
@@ -20,3 +21,4 @@ api_router.include_router(blood_requests.router)
 api_router.include_router(hospitals.router)
 api_router.include_router(matching.router)
 api_router.include_router(stock.router)
+api_router.include_router(donations.router)

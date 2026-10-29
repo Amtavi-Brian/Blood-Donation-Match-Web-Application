@@ -3,7 +3,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
-from app.models.blood_request import BloodRequestStatus
+from app.models.blood_request import (
+    BloodRequest,
+    BloodRequestStatus,
+    BloodRequestUrgency,
+)
 from app.models.hospital import Hospital
 from app.models.hospital_user import HospitalUser
 from app.models.user import User, UserRole
@@ -15,7 +19,6 @@ from app.schemas.blood_request import (
 )
 
 from app.services import blood_request_service
-from backend.app.models import blood_request
 
 router = APIRouter(
     prefix="/blood-requests",
