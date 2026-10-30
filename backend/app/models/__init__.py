@@ -12,6 +12,8 @@ from app.models.blood_stock import BloodStock
 from app.models.stock_batch import StockBatch
 from app.models.donation_record import DonationRecord
 from app.models.notififcation import Notification
+#from app.models.report import Report
+from app.models.audit_log import AuditLog
 from app.models.reminder import Reminder, ReminderStatus
 
 __all__ = [
@@ -30,4 +32,5 @@ __all__ = [
     "Notification",
     "Reminder",
     "ReminderStatus",
+    "AuditLog",
 ]

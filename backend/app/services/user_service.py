@@ -4,11 +4,12 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
 from app.models.user import User, UserRole
+from app.models.audit_log import AuditLog
 from app.schemas.auth import UserCreate, UserLogin
 
 
 def create_user(db: Session, user_data: UserCreate) -> User | None:
-    """Register a new donor if the email is not already registered."""
+    """Register a donor and record the registration activity."""
 
     existing_user = db.scalar(
         select(User).where(User.email == str(user_data.email))
@@ -25,11 +26,22 @@ def create_user(db: Session, user_data: UserCreate) -> User | None:
         role=UserRole.DONOR,
     )
 
-    db.add(new_user)
-
     try:
+        db.add(new_user)
+        db.flush()
+
+        audit_log = AuditLog(
+            user_id=new_user.id,
+            action="user_registered",
+            entity_type="user",
+            entity_id=new_user.id,
+            description="A new donor account was registered.",
+        )
+
+        db.add(audit_log)
         db.commit()
         db.refresh(new_user)
+
     except Exception:
         db.rollback()
         raise
