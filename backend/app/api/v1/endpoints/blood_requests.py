@@ -3,7 +3,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
-from app.models.blood_request import BloodRequestStatus
+from app.models.blood_request import (
+    BloodRequest,
+    BloodRequestStatus,
+    BloodRequestUrgency,
+)
 from app.models.hospital import Hospital
 from app.models.hospital_user import HospitalUser
 from app.models.user import User, UserRole
@@ -11,6 +15,7 @@ from app.schemas.blood_request import (
     BloodRequestCreate,
     BloodRequestResponse,
     BloodRequestUpdate,
+    BloodRequestStatusUpdate,
 )
 
 from app.services import blood_request_service
@@ -205,8 +210,54 @@ def cancel_request(
         current_user,
         blood_request.hospital_id,
     )
-
-    return blood_request_service.cancel_blood_request(
-        db,
-        blood_request,
+    try:
+        return blood_request_service.update_blood_request_status(
+            db,
+            blood_request,
+        BloodRequestStatus.CANCELLED,
     )
+    except ValueError as exc:
+        raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail=str(exc),
+    ) from exc
+
+
+@router.patch(
+    "/{request_id}/status",
+    response_model=BloodRequestResponse,
+)
+def update_request_status(
+    request_id: int,
+    status_data: BloodRequestStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    blood_request = blood_request_service.get_blood_request(
+        db,
+        request_id,
+    )
+
+    if blood_request is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Blood request not found.",
+        )
+
+    require_hospital_access(
+        db,
+        current_user,
+        blood_request.hospital_id,
+    )
+
+    try:
+        return blood_request_service.update_blood_request_status(
+            db,
+            blood_request,
+            status_data.status,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
