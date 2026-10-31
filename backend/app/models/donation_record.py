@@ -2,11 +2,11 @@ import enum
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, String, Text
-from sqlalchemy import Mapped, mapped_column
+from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
-from app.db.session import Base
+from app.db.base import Base
 
 class DonationRecord(Base):
     __tablename__ = "donation_records"
