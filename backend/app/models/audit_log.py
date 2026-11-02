@@ -1,11 +1,11 @@
 from datetime import datetime
 import uuid
 
-from sqlalchemy import Boolean, DateTime, Enum, String, Text
-from sqlalchemy import Mapped, mapped_column
+from sqlalchemy import DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
-from app.db.session import Base
+from app.db.base import Base
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

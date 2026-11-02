@@ -1,19 +1,9 @@
 
-from datetime import datetime, timezone
-
-from sqlalchemy import (
-    Boolean,
-    CheckConstraint,
-    DateTime,
-    Enum,
-    ForeignKey,
-    Integer,
-)
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.sql import func
 
 from app.db.base import Base
-from app.models.donor_profile import BloodGroup
-
 
 class DonationRecord(Base):
     __tablename__ = "donation_records"
