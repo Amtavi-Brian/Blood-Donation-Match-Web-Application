@@ -1,9 +1,15 @@
 
-from sqlalchemy import Boolean, DateTime, Text
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
+from datetime import datetime, timezone
 
-from app.db.base import Base
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
