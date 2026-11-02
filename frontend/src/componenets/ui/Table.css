@@ -1,0 +1,33 @@
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.9rem 0.8rem;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.data-table th {
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.data-table td {
+  color: #1f2937;
+  font-size: 0.82rem;
+}
+
+.data-table tbody tr:hover {
+  background: #fafbff;
+}

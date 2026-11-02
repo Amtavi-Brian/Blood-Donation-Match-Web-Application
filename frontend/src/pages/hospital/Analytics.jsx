@@ -2,7 +2,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import MetricCard from '../../componenets/dashboard/MetricCard'
 import DataTable from '../../componenets/ui/DataTable'
+import EmptyState from '../../componenets/ui/EmptyState'
 import FilterTabs from '../../componenets/ui/FilterTabs'
+import Panel from '../../componenets/ui/Panel'
 import PrimaryActionCard from '../../componenets/ui/PrimaryActionCard'
 import SectionHeader from '../../componenets/ui/SectionHeader'
 import StatusBadge from '../../componenets/ui/StatusBadge'
@@ -373,26 +375,21 @@ function AnalyticsDashboard() {
 
           {/* Donor Trends */}
           {activeTab === 'Donor Trends' && (
-            <section className="bl-panel empty-tab">
-              <div className="empty-tab-icon">↗</div>
-              <h3>Donation Trends</h3>
-              <p>
-                Historical donation data will appear here once the
-                backend provides donation records grouped by date.
-              </p>
-            </section>
+            <Panel title="Donation Trends" subtitle="Historical donation data by time window">
+              <EmptyState
+                icon="↗"
+                title="Donation Trends"
+                description="Historical donation data will appear here once the backend provides donation records grouped by date."
+              />
+            </Panel>
           )}
 
           {/* Demand Forecast */}
           {activeTab === 'Demand Forecast' && (
-            <section className="bl-panel">
-              <div className="panel-heading">
-                <div>
-                  <h3>Demand Analysis</h3>
-                  <p>Current blood demand by group</p>
-                </div>
-              </div>
-
+            <Panel
+              title="Demand Analysis"
+              subtitle="Current blood demand by group"
+            >
               {demandData.length ? (
                 <>
                   <div className="horizontal-chart forecast-chart">
@@ -421,9 +418,13 @@ function AnalyticsDashboard() {
                   </p>
                 </>
               ) : (
-                <p className="empty-chart">No demand data available.</p>
+                <EmptyState
+                  icon="♡"
+                  title="No demand data available"
+                  description="The demand forecast panel will populate once the backend returns blood-demand trends."
+                />
               )}
-            </section>
+            </Panel>
           )}
 
           {/* Recent requests */}
