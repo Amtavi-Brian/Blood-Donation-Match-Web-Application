@@ -1,11 +1,12 @@
+import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, datetimefrom
 
-from sqlalchemy import DateTime, String
-from sqlalchemy.orm import Mapped, mapped_column
+import sqlalchemy
+from sqlalchemy import Boolean, DateTime, Enum, String, Text
+from sqlalchemy import Mapped, mapped_column
 from sqlalchemy.sql import func
-
-from app.db.base import Base
+from app.db.session import Base
 
 class DonorMatch(Base):
     __tablename__ = "donor_matches"
