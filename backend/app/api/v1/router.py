@@ -12,7 +12,10 @@ from app.api.v1.endpoints import (
     donations,
     notifications,
     reminder,
+    reports,
+    audit,
 )
+
 
 api_router = APIRouter()
 
@@ -26,3 +29,5 @@ api_router.include_router(stock.router)
 api_router.include_router(donations.router)
 api_router.include_router(notifications.router)
 api_router.include_router(reminder.router)
+api_router.include_router(reports.router)
+api_router.include_router(audit.router)
