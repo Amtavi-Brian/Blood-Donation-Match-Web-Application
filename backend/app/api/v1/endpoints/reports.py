@@ -7,6 +7,7 @@ from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.models.hospital import Hospital
 from app.models.hospital_user import HospitalUser
+from app.models.audit_log import AuditLog
 
 from app.schemas.analytics import (
     DashboardAnalytics,
@@ -24,7 +25,43 @@ router = APIRouter(prefix="/reports", tags=["Reports"])
 
 
 # --------------------------------------------------
-# Authorization helpers
+# AUDIT LOGGING
+# --------------------------------------------------
+
+def record_report_access(
+    db: Session,
+    current_user: User,
+    report_name: str,
+    hospital_id: int | None = None,
+) -> None:
+    """Record successful access to an analytics report."""
+
+    description = (
+        f"User {current_user.id} accessed the "
+        f"{report_name} report."
+    )
+
+    if hospital_id is not None:
+        description += f" Hospital ID: {hospital_id}."
+
+    audit_entry = AuditLog(
+        user_id=current_user.id,
+        action="report_accessed",
+        entity_type="analytics_report",
+        entity_id=hospital_id,
+        description=description,
+    )
+
+    try:
+        db.add(audit_entry)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+
+# --------------------------------------------------
+# AUTHORIZATION HELPERS
 # --------------------------------------------------
 
 def require_admin(current_user: User) -> None:
@@ -73,7 +110,7 @@ def require_hospital_access(
 
 
 # --------------------------------------------------
-# Dashboard report
+# DASHBOARD REPORT
 # Administrator only
 # --------------------------------------------------
 
@@ -87,11 +124,19 @@ def dashboard_report(
 ):
     require_admin(current_user)
 
-    return analytics_service.get_dashboard_analytics(db)
+    result = analytics_service.get_dashboard_analytics(db)
+
+    record_report_access(
+        db=db,
+        current_user=current_user,
+        report_name="dashboard analytics",
+    )
+
+    return result
 
 
 # --------------------------------------------------
-# Donation report
+# DONATION REPORT
 # --------------------------------------------------
 
 @router.get(
@@ -104,18 +149,31 @@ def donation_report(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role == UserRole.ADMIN:
-        return analytics_service.get_donation_analytics(db)
+        result = analytics_service.get_donation_analytics(db)
+    else:
+        require_hospital_access(db, current_user, hospital_id)
 
-    require_hospital_access(db, current_user, hospital_id)
+        result = analytics_service.get_donation_analytics(
+            db,
+            hospital_id=hospital_id,
+        )
 
-    return analytics_service.get_donation_analytics(
-        db,
-        hospital_id=hospital_id,
+    record_report_access(
+        db=db,
+        current_user=current_user,
+        report_name="donation analytics",
+        hospital_id=(
+            hospital_id
+            if current_user.role == UserRole.HOSPITAL_STAFF
+            else None
+        ),
     )
+
+    return result
 
 
 # --------------------------------------------------
-# Blood request report
+# BLOOD REQUEST REPORT
 # --------------------------------------------------
 
 @router.get(
@@ -128,18 +186,31 @@ def blood_request_report(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role == UserRole.ADMIN:
-        return analytics_service.get_blood_request_analytics(db)
+        result = analytics_service.get_blood_request_analytics(db)
+    else:
+        require_hospital_access(db, current_user, hospital_id)
 
-    require_hospital_access(db, current_user, hospital_id)
+        result = analytics_service.get_blood_request_analytics(
+            db,
+            hospital_id=hospital_id,
+        )
 
-    return analytics_service.get_blood_request_analytics(
-        db,
-        hospital_id=hospital_id,
+    record_report_access(
+        db=db,
+        current_user=current_user,
+        report_name="blood request analytics",
+        hospital_id=(
+            hospital_id
+            if current_user.role == UserRole.HOSPITAL_STAFF
+            else None
+        ),
     )
+
+    return result
 
 
 # --------------------------------------------------
-# Blood stock report
+# BLOOD STOCK REPORT
 # --------------------------------------------------
 
 @router.get(
@@ -152,18 +223,31 @@ def blood_stock_report(
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role == UserRole.ADMIN:
-        return analytics_service.get_blood_stock_analytics(db)
+        result = analytics_service.get_blood_stock_analytics(db)
+    else:
+        require_hospital_access(db, current_user, hospital_id)
 
-    require_hospital_access(db, current_user, hospital_id)
+        result = analytics_service.get_blood_stock_analytics(
+            db,
+            hospital_id=hospital_id,
+        )
 
-    return analytics_service.get_blood_stock_analytics(
-        db,
-        hospital_id=hospital_id,
+    record_report_access(
+        db=db,
+        current_user=current_user,
+        report_name="blood stock analytics",
+        hospital_id=(
+            hospital_id
+            if current_user.role == UserRole.HOSPITAL_STAFF
+            else None
+        ),
     )
+
+    return result
 
 
 # --------------------------------------------------
-# Donor report
+# DONOR REPORT
 # Administrator only
 # --------------------------------------------------
 
@@ -177,11 +261,19 @@ def donor_report(
 ):
     require_admin(current_user)
 
-    return analytics_service.get_donor_analytics(db)
+    result = analytics_service.get_donor_analytics(db)
+
+    record_report_access(
+        db=db,
+        current_user=current_user,
+        report_name="donor analytics",
+    )
+
+    return result
 
 
 # --------------------------------------------------
-# Hospital report
+# HOSPITAL REPORT
 # Administrator only
 # --------------------------------------------------
 
@@ -195,4 +287,12 @@ def hospital_report(
 ):
     require_admin(current_user)
 
-    return analytics_service.get_hospital_analytics(db)
+    result = analytics_service.get_hospital_analytics(db)
+
+    record_report_access(
+        db=db,
+        current_user=current_user,
+        report_name="hospital analytics",
+    )
+
+    return result

@@ -81,4 +81,5 @@ def match_donors_to_request(
     return matching_service.find_potential_donors(
         db,
         blood_request,
+        performed_by_user_id=current_user.id
     )

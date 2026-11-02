@@ -5,14 +5,34 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.notififcation import Notification
+from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.notification import NotificationCreate
 
+
+def add_audit_entry(
+    db: Session,
+    user_id: int | None,
+    action: str,
+    entity_id: int,
+    description: str,
+) -> None:
+    """Add an audit entry to the current database transaction."""
+    db.add(
+        AuditLog(
+            user_id=user_id,
+            action=action,
+            entity_type="notification",
+            entity_id=entity_id,
+            description=description,
+        )
+    )
 
 
 def create_notification(
     db: Session,
     data: NotificationCreate,
+    performed_by_user_id: int | None = None,
 ) -> Notification:
     user = db.query(User).filter(User.id == data.user_id).first()
 
@@ -29,14 +49,27 @@ def create_notification(
 
     try:
         db.add(notification)
+        db.flush()
+
+        add_audit_entry(
+            db=db,
+            user_id=performed_by_user_id,
+            action="notification_created",
+            entity_id=notification.notification_id,
+            description=(
+                f"Created a {notification.notification_type} "
+                f"notification for user {notification.user_id}."
+            ),
+        )
+
         db.commit()
         db.refresh(notification)
+
     except Exception:
         db.rollback()
         raise
 
     return notification
-
 
 
 def get_user_notifications(
@@ -83,8 +116,21 @@ def mark_notification_as_read(
         try:
             notification.is_read = True
             notification.read_at = datetime.now(timezone.utc)
+
+            add_audit_entry(
+                db=db,
+                user_id=user_id,
+                action="notification_marked_as_read",
+                entity_id=notification.notification_id,
+                description=(
+                    f"User {user_id} marked notification "
+                    f"{notification.notification_id} as read."
+                ),
+            )
+
             db.commit()
             db.refresh(notification)
+
         except Exception:
             db.rollback()
             raise
@@ -104,12 +150,27 @@ def mark_all_notifications_as_read(
     notifications = list(db.scalars(statement).all())
     current_time = datetime.now(timezone.utc)
 
+    if not notifications:
+        return 0
+
     try:
         for notification in notifications:
             notification.is_read = True
             notification.read_at = current_time
 
+        add_audit_entry(
+            db=db,
+            user_id=user_id,
+            action="notifications_marked_as_read",
+            entity_id=notifications[0].notification_id,
+            description=(
+                f"User {user_id} marked {len(notifications)} "
+                f"notifications as read."
+            ),
+        )
+
         db.commit()
+
     except Exception:
         db.rollback()
         raise

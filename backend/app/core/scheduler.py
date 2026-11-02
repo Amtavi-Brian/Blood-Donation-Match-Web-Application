@@ -4,7 +4,7 @@ import logging
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from app.db.session import SessionLocal
-from app.services.remnder_service import process_due_reminders
+from backend.app.services.reminder_service import process_due_reminders
 
 logger = logging.getLogger(__name__)
 
