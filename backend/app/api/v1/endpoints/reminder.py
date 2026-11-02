@@ -11,7 +11,7 @@ from app.schemas.reminder import (
     ReminderCreate,
     ReminderResponse,
 )
-from app.services.remnder_service import (
+from backend.app.services.reminder_service import (
     create_reminder,
     get_user_reminders,
     cancel_reminder,

@@ -14,6 +14,7 @@ from app.api.v1.endpoints import (
     reminder,
     reports,
     audit,
+    admin,
 )
 
 
@@ -31,3 +32,5 @@ api_router.include_router(notifications.router)
 api_router.include_router(reminder.router)
 api_router.include_router(reports.router)
 api_router.include_router(audit.router)
+api_router.include_router(admin.router)
+

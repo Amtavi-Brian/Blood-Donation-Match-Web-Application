@@ -1,132 +1,173 @@
 
-from datetime import datetime, timezone
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.donation_record import DonationRecord
-from app.models.donor_profile import BloodGroup, DonorProfile
-from app.models.hospital import Hospital
+from app.models.audit_log import AuditLog
+from app.models.donor_profile import DonorProfile
 from app.models.user import User, UserRole
+from app.schemas.donor import (
+    DonorProfileCreate,
+    DonorProfileUpdate,
+)
 
 
-def create_donation(
+# ---------------------------------------------------------
+# AUDIT LOGGING HELPER
+# ---------------------------------------------------------
+
+def add_audit_entry(
     db: Session,
-    donor_id: int,
-    hospital_id: int,
-    blood_type: BloodGroup,
-    quantity: int,
-    donated_at: datetime | None = None,
-) -> DonationRecord:
-    if quantity <= 0 or quantity > 10000:
-        raise ValueError("Quantity must be between 1 and 10000.")
-
-    if donated_at is None:
-        donated_at = datetime.now(timezone.utc)
-    elif donated_at.tzinfo is None:
-        donated_at = donated_at.replace(tzinfo=timezone.utc)
-
-    if donated_at > datetime.now(timezone.utc):
-        raise ValueError("Donation date cannot be in the future.")
-
-    donor = db.get(DonorProfile, donor_id)
-    if donor is None:
-        raise ValueError("Donor profile not found.")
-
-    donor_user = donor.user
-    if (
-        donor_user is None
-        or not donor_user.is_active
-        or donor_user.role != UserRole.DONOR
-    ):
-        raise ValueError("An active donor account is required.")
-
-    hospital = db.get(Hospital, hospital_id)
-    if hospital is None or not hospital.is_verified:
-        raise ValueError("Verified hospital not found.")
-
-    if blood_type != donor.blood_group:
-        raise ValueError(
-            "Recorded blood group must match the donor profile."
-        )
-
-    donation = DonationRecord(
-        donor_id=donor_id,
-        hospital_id=hospital_id,
-        blood_type=blood_type,
-        quantity=quantity,
-        donated_at=donated_at,
-        verified=False,
+    user_id: int,
+    action: str,
+    profile_id: int,
+    description: str,
+) -> None:
+    audit = AuditLog(
+        user_id=user_id,
+        action=action,
+        entity_type="donor_profile",
+        entity_id=profile_id,
+        description=description,
     )
 
-    try:
-        db.add(donation)
-        db.commit()
-        db.refresh(donation)
-    except Exception:
-        db.rollback()
-        raise
-
-    return donation
+    db.add(audit)
 
 
-def list_donations_for_donor(
-    db: Session,
-    donor_id: int,
-) -> list[DonationRecord]:
-    statement = (
-        select(DonationRecord)
-        .where(DonationRecord.donor_id == donor_id)
-        .order_by(DonationRecord.donated_at.desc())
-    )
-    return list(db.scalars(statement).all())
+# ---------------------------------------------------------
+# CREATE DONOR PROFILE
+# ---------------------------------------------------------
 
-
-def list_donations_for_hospital(
-    db: Session,
-    hospital_id: int,
-) -> list[DonationRecord]:
-    statement = (
-        select(DonationRecord)
-        .where(DonationRecord.hospital_id == hospital_id)
-        .order_by(DonationRecord.donated_at.desc())
-    )
-    return list(db.scalars(statement).all())
-
-
-def verify_donation(
-    db: Session,
-    donation_id: int,
-    hospital_id: int,
-) -> DonationRecord | None:
-    statement = select(DonationRecord).where(
-        DonationRecord.donation_id == donation_id,
-        DonationRecord.hospital_id == hospital_id,
-    )
-    donation = db.scalar(statement)
-
-    if donation is None:
-        return None
-
-    if not donation.verified:
-        try:
-            donation.verified = True
-            db.commit()
-            db.refresh(donation)
-        except Exception:
-            db.rollback()
-            raise
-
-    return donation
-
-
-def get_donor_id_for_user(
+def create_donor_profile(
     db: Session,
     user: User,
-) -> int | None:
-    donor = db.scalar(
+    profile_data: DonorProfileCreate,
+) -> DonorProfile:
+
+    # Only donor accounts can create donor profiles.
+    if user.role != UserRole.DONOR:
+        raise ValueError(
+            "Only donor accounts can create donor profiles."
+        )
+
+    if not user.is_active:
+        raise ValueError(
+            "An active account is required to create a donor profile."
+        )
+
+    # Check whether the user already has a donor profile.
+    existing_profile = db.scalar(
         select(DonorProfile).where(
             DonorProfile.user_id == user.id
         )
     )
-    return donor.id if donor else None
+
+    if existing_profile is not None:
+        raise ValueError(
+            "You already have a donor profile."
+        )
+
+    profile = DonorProfile(
+        user_id=user.id,
+        blood_group=profile_data.blood_group,
+        city=profile_data.city,
+        available_to_contact=profile_data.available_to_contact,
+        consent_to_contact=profile_data.consent_to_contact,
+    )
+
+    try:
+        db.add(profile)
+
+        # Generate profile ID before creating the audit record.
+        db.flush()
+
+        add_audit_entry(
+            db=db,
+            user_id=user.id,
+            action="donor_profile_created",
+            profile_id=profile.id,
+            description=(
+                f"Created donor profile with ID {profile.id}."
+            ),
+        )
+
+        db.commit()
+        db.refresh(profile)
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return profile
+
+
+# ---------------------------------------------------------
+# GET DONOR PROFILE
+# ---------------------------------------------------------
+
+def get_donor_profile(
+    db: Session,
+    user_id: int,
+) -> DonorProfile | None:
+
+    statement = select(DonorProfile).where(
+        DonorProfile.user_id == user_id
+    )
+
+    return db.scalar(statement)
+
+
+# ---------------------------------------------------------
+# UPDATE DONOR PROFILE
+# ---------------------------------------------------------
+
+def update_donor_profile(
+    db: Session,
+    user_id: int,
+    profile_data: DonorProfileUpdate,
+) -> DonorProfile | None:
+
+    profile = get_donor_profile(db, user_id)
+
+    if profile is None:
+        return None
+
+    # Only update fields explicitly supplied by the user.
+    update_data = profile_data.model_dump(
+        exclude_unset=True
+    )
+
+    if not update_data:
+        return profile
+
+    try:
+        changed_fields = []
+
+        for field, value in update_data.items():
+            if getattr(profile, field) != value:
+                setattr(profile, field, value)
+                changed_fields.append(field)
+
+        # Do not create audit records when nothing changed.
+        if not changed_fields:
+            return profile
+
+        add_audit_entry(
+            db=db,
+            user_id=user_id,
+            action="donor_profile_updated",
+            profile_id=profile.id,
+            description=(
+                "Updated donor profile fields: "
+                + ", ".join(changed_fields)
+                + "."
+            ),
+        )
+
+        db.commit()
+        db.refresh(profile)
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return profile

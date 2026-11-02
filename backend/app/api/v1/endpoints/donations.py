@@ -78,14 +78,15 @@ def create_donation_record(
     require_hospital_access(db, current_user, hospital_id)
 
     try:
-        return donation_service.create_donation(
-            db=db,
-            donor_id=data.donor_id,
-            hospital_id=hospital_id,
-            blood_type=data.blood_type,
-            quantity=data.quantity,
-            donated_at=data.donated_at,
-        )
+       return donation_service.create_donation(
+    db=db,
+    donor_id=data.donor_id,
+    hospital_id=hospital_id,
+    blood_type=data.blood_type,
+    quantity=data.quantity,
+    performed_by_user_id=current_user.id,
+    donated_at=data.donated_at,
+)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -154,6 +155,7 @@ def verify_donation_record(
         db,
         donation_id,
         hospital_id,
+        performed_by_user_id=current_user.id,
     )
 
     if donation is None:
