@@ -1,12 +1,21 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import MetricCard from '../../componenets/dashboard/MetricCard'
+import DataTable from '../../componenets/ui/DataTable'
+import FilterTabs from '../../componenets/ui/FilterTabs'
+import PrimaryActionCard from '../../componenets/ui/PrimaryActionCard'
+import SectionHeader from '../../componenets/ui/SectionHeader'
+import StatusBadge from '../../componenets/ui/StatusBadge'
 import { fetchReportSummary } from '../../services/reportService'
 import './Analytics.css'
 
 const numberFormat = new Intl.NumberFormat('en-US')
 
-const tabs = ['Stock Levels', 'Donor Trends', 'Demand Forecast']
+const tabs = [
+  { label: 'Stock Levels', value: 'Stock Levels' },
+  { label: 'Donor Trends', value: 'Donor Trends' },
+  { label: 'Demand Forecast', value: 'Demand Forecast' },
+]
 
 function AnalyticsDashboard() {
   const [report, setReport] = useState(null)
@@ -98,6 +107,18 @@ function AnalyticsDashboard() {
     0
   )
 
+  const recentRequestColumns = [
+    { key: 'hospital_name', label: 'Hospital' },
+    { key: 'blood_group', label: 'Blood Group' },
+    { key: 'units_needed', label: 'Units' },
+    { key: 'urgency', label: 'Urgency' },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (value) => <StatusBadge status={value} label={value} />,
+    },
+  ]
+
   const topDemandGroups = useMemo(() => {
     return [...demandData]
       .sort((a, b) => Number(b.units_needed) - Number(a.units_needed))
@@ -158,18 +179,26 @@ function AnalyticsDashboard() {
         <div className="analytics-content">
 
           {/* Page heading */}
-          <section className="analytics-heading">
-            <div>
-              <h1>Analytics & Reports</h1>
-              <p>
-                Get insights into your hospital's blood stock
-                and donation activities.
-              </p>
-            </div>
-            <button className="bl-outline-btn" onClick={() => window.print()}>
-              ↓ Export report
-            </button>
-          </section>
+          <SectionHeader
+            eyebrow="Operations overview"
+            title="Analytics & Reports"
+            description="Get insights into your hospital's blood stock and donation activities."
+            align="left"
+            action={
+              <button className="bl-outline-btn" onClick={() => window.print()}>
+                ↓ Export report
+              </button>
+            }
+          />
+
+          <PrimaryActionCard
+            eyebrow="Urgent review"
+            title="Three critical requests need attention"
+            description="Review inventory and dispatch priority units before the next donor cycle begins."
+            actionLabel="View queue"
+            onAction={() => setActiveTab('Demand Forecast')}
+            accent="red"
+          />
 
           {/* Summary cards */}
           <section className="bl-stats-grid">
@@ -186,17 +215,12 @@ function AnalyticsDashboard() {
           </section>
 
           {/* Tabs */}
-          <section className="analytics-tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                className={activeTab === tab ? 'tab active' : 'tab'}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tab}
-              </button>
-            ))}
-          </section>
+          <FilterTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            variant="pill"
+          />
 
           {/* Stock Levels */}
           {activeTab === 'Stock Levels' && (
@@ -404,58 +428,18 @@ function AnalyticsDashboard() {
 
           {/* Recent requests */}
           <section className="bl-panel requests-panel">
-            <div className="panel-heading">
-              <div>
-                <h3>Recent Blood Requests</h3>
-                <p>Latest hospital blood request activity</p>
-              </div>
-            </div>
+            <SectionHeader
+              eyebrow="Latest activity"
+              title="Recent Blood Requests"
+              description="Latest hospital blood request activity"
+              align="left"
+            />
 
-            <div className="table-responsive">
-              <table className="bl-table">
-                <thead>
-                  <tr>
-                    <th>Hospital</th>
-                    <th>Blood Group</th>
-                    <th>Units</th>
-                    <th>Urgency</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {recentRequests.length ? (
-                    recentRequests.map((request) => (
-                      <tr key={request.id}>
-                        <td>{request.hospital_name}</td>
-                        <td>{request.blood_group}</td>
-                        <td>{request.units_needed}</td>
-                        <td>{request.urgency}</td>
-                        <td>
-                          <span
-                            className={`status-pill ${
-                              ['pending', 'fulfilled', 'cancelled'].includes(
-                                String(request.status).toLowerCase()
-                              )
-                                ? String(request.status).toLowerCase()
-                                : 'default'
-                            }`}
-                          >
-                            {request.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="table-empty">
-                        No recent requests found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={recentRequestColumns}
+              rows={recentRequests}
+              emptyMessage="No recent requests found."
+            />
           </section>
 
           <footer className="analytics-footer">
