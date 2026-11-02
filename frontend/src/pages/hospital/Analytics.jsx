@@ -1,5 +1,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
+import MetricCard from '../../componenets/dashboard/MetricCard'
 import { fetchReportSummary } from '../../services/reportService'
 import './Analytics.css'
 
@@ -173,13 +174,14 @@ function AnalyticsDashboard() {
           {/* Summary cards */}
           <section className="bl-stats-grid">
             {summaryCards.map((card) => (
-              <article className={`bl-stat-card ${card.color}`} key={card.label}>
-                <div className="stat-icon">{card.icon}</div>
-                <div className="stat-information">
-                  <span>{card.label}</span>
-                  <strong>{numberFormat.format(card.value)}</strong>
-                </div>
-              </article>
+              <MetricCard
+                key={card.label}
+                icon={card.icon}
+                label={card.label}
+                value={card.value}
+                subtitle={card.subtitle}
+                tone={card.color}
+              />
             ))}
           </section>
 
