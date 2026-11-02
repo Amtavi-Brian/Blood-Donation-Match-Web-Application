@@ -1,0 +1,66 @@
+.primary-action-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.1rem 1.2rem;
+  border-radius: 20px;
+  border: 1px solid #edf2f7;
+  background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+}
+
+.primary-action-card--red {
+  background: linear-gradient(135deg, #fff1f2 0%, #ffffff 100%);
+}
+
+.primary-action-card--blue {
+  background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+}
+
+.primary-action-card--green {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
+}
+
+.primary-action-card__content {
+  flex: 1;
+}
+
+.primary-action-card__eyebrow {
+  display: inline-block;
+  margin-bottom: 0.3rem;
+  color: #c9031e;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.primary-action-card__content h3 {
+  margin: 0;
+  color: #111827;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.primary-action-card__content p {
+  margin: 0.4rem 0 0;
+  color: #64748b;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.primary-action-card__button {
+  border: none;
+  background: #c9031e;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.7rem 1.1rem;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.primary-action-card__button:hover {
+  opacity: 0.92;
+}

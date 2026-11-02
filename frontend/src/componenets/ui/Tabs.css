@@ -1,0 +1,23 @@
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.tabs__button {
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 999px;
+  padding: 0.65rem 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tabs__button.is-active {
+  background: #c9031e;
+  border-color: #c9031e;
+  color: #fff;
+}
