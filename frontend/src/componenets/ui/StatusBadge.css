@@ -1,0 +1,31 @@
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: capitalize;
+  line-height: 1;
+}
+
+.status-badge--pending {
+  color: #a36b00;
+  background: #fff4d6;
+}
+
+.status-badge--fulfilled {
+  color: #137a4c;
+  background: #e3f8ef;
+}
+
+.status-badge--cancelled {
+  color: #b42318;
+  background: #fce8ec;
+}
+
+.status-badge--default {
+  color: #475569;
+  background: #f1f5f9;
+}

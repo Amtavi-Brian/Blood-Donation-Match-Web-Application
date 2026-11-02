@@ -157,6 +157,8 @@ def authorize_hospital_staff(
     )
 
     if existing:
+        if existing.is_authorized:
+            return existing
         existing.is_authorized = True
         staff_link = existing
     else:

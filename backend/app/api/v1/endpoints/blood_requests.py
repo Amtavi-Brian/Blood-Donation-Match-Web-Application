@@ -85,6 +85,7 @@ def create_request(
         db,
         hospital_id,
         request_data,
+        performed_by_user_id=current_user.id,
     )
 
 
@@ -92,17 +93,38 @@ def create_request(
     "/",
     response_model=list[BloodRequestResponse],
 )
-def list_requests(
-    status_filter: BloodRequestStatus | None = Query(
-        default=None,
-        alias="status",
-    ),
-    db: Session = Depends(get_db),
+def list_blood_requests(
+    db: Session,
+    status_filter: BloodRequestStatus | None = None,
+    hospital_id: int | None = None,
+    include_cancelled: bool = False,
     current_user: User = Depends(get_current_user),
-):
-    return blood_request_service.list_blood_requests(
-        db,
-        status_filter,
+) -> list[BloodRequest]:
+    if current_user.role == UserRole.ADMIN:
+        return blood_request_service.list_blood_requests(
+            db,
+            status_filter,
+        )
+
+    if current_user.role == UserRole.HOSPITAL_STAFF:
+        hospital_id = require_hospital_access(db, current_user, hospital_id)
+
+        return blood_request_service.list_blood_requests(
+            db,
+            status_filter,
+            hospital_id=hospital_id,
+            include_cancelled=include_cancelled,
+        )
+
+    if current_user.role == UserRole.DONOR:
+        return blood_request_service.list_blood_requests(
+            db,
+            status_filter,
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail="You are not authorized to view blood requests.",
     )
 
 
@@ -176,13 +198,20 @@ def update_request(
         raise HTTPException(
         status_code=status.HTTP_409_CONFLICT,
         detail="Only pending blood requests can be updated.",
-    )
+        )
 
-    return blood_request_service.update_blood_request(
-        db,
-        blood_request,
-        update_data,
-    )
+    try:
+        return blood_request_service.update_blood_request(
+            db,
+            blood_request,
+            update_data,
+            performed_by_user_id=current_user.id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.delete(
@@ -214,8 +243,9 @@ def cancel_request(
         return blood_request_service.update_blood_request_status(
             db,
             blood_request,
-        BloodRequestStatus.CANCELLED,
-    )
+            BloodRequestStatus.CANCELLED,
+            performed_by_user_id=current_user.id,
+        )
     except ValueError as exc:
         raise HTTPException(
         status_code=status.HTTP_409_CONFLICT,
@@ -255,6 +285,7 @@ def update_request_status(
             db,
             blood_request,
             status_data.status,
+            performed_by_user_id=current_user.id,
         )
     except ValueError as exc:
         raise HTTPException(

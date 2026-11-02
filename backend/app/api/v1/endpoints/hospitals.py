@@ -28,7 +28,7 @@ def register_hospital(
             detail="Only administrators can register hospitals.",
         )
 
-    hospital = hospital_service.create_hospital(db, hospital_data)
+    hospital = hospital_service.create_hospital(db, hospital_data, performed_by_user_id=current_user.id)
 
     if hospital is None:
         raise HTTPException(
@@ -91,7 +91,7 @@ def update_hospital(
             detail="Hospital not found.",
         )
 
-    return hospital_service.update_hospital(db, hospital, hospital_data)
+    return hospital_service.update_hospital(db, hospital, hospital_data, performed_by_user_id=current_user.id)
 
 
 @router.patch(
@@ -114,6 +114,7 @@ def verify_hospital(
         db,
         hospital_id,
         is_verified,
+        performed_by_user_id=current_user.id
     )
 
     if hospital is None:
@@ -145,6 +146,7 @@ def authorize_staff(
         db,
         hospital_id,
         user_id,
+        performed_by_user_id=current_user.id
     )
 
     if staff_link is None:
@@ -176,6 +178,7 @@ def revoke_staff_authorization(
         db,
         hospital_id,
         user_id,
+        performed_by_user_id=current_user.id
     )
 
     if staff_link is None:

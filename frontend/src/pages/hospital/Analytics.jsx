@@ -1,0 +1,458 @@
+<<<<<<< HEAD
+
+import { useEffect, useMemo, useState } from 'react'
+import MetricCard from '../../componenets/dashboard/MetricCard'
+import DataTable from '../../componenets/ui/DataTable'
+import EmptyState from '../../componenets/ui/EmptyState'
+import FilterTabs from '../../componenets/ui/FilterTabs'
+import Panel from '../../componenets/ui/Panel'
+import PrimaryActionCard from '../../componenets/ui/PrimaryActionCard'
+import SectionHeader from '../../componenets/ui/SectionHeader'
+import StatusBadge from '../../componenets/ui/StatusBadge'
+import { fetchReportSummary } from '../../services/reportService'
+import './Analytics.css'
+
+const numberFormat = new Intl.NumberFormat('en-US')
+
+const tabs = [
+  { label: 'Stock Levels', value: 'Stock Levels' },
+  { label: 'Donor Trends', value: 'Donor Trends' },
+  { label: 'Demand Forecast', value: 'Demand Forecast' },
+]
+
+function AnalyticsDashboard() {
+  const [report, setReport] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState('Stock Levels')
+
+  async function loadReport() {
+    setLoading(true)
+    setError('')
+
+    try {
+      const data = await fetchReportSummary()
+      setReport(data)
+    } catch (err) {
+      setError(err.message || 'Unable to load analytics.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function load() {
+      try {
+        const data = await fetchReportSummary()
+        if (isMounted) setReport(data)
+      } catch (err) {
+        if (isMounted) {
+          setError(err.message || 'Unable to load analytics.')
+        }
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+
+    load()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const overview = report?.overview || {}
+
+  const summaryCards = [
+    {
+      label: 'Total Stock Units',
+      value: overview.total_stock_units ?? 0,
+      icon: '▤',
+      color: 'red',
+    },
+    {
+      label: 'Verified Hospitals',
+      value: overview.verified_hospitals ?? 0,
+      icon: '✚',
+      color: 'green',
+    },
+    {
+      label: 'Active Donors',
+      value: overview.active_donors ?? 0,
+      icon: '♙',
+      color: 'purple',
+    },
+    {
+      label: 'Pending Requests',
+      value: overview.pending_requests ?? 0,
+      icon: '◷',
+      color: 'orange',
+    },
+  ]
+
+  const stockData = report?.stock_by_blood_type || []
+  const demandData = report?.demand_by_blood_type || []
+  const recentRequests = report?.recent_requests || []
+
+  const maxStockUnits = Math.max(
+    1,
+    ...stockData.map((item) => Number(item.units) || 0)
+  )
+
+  const maxDemandUnits = Math.max(
+    1,
+    ...demandData.map((item) => Number(item.units_needed) || 0)
+  )
+
+  const totalDemand = demandData.reduce(
+    (total, item) => total + (Number(item.units_needed) || 0),
+    0
+  )
+
+  const recentRequestColumns = [
+    { key: 'hospital_name', label: 'Hospital' },
+    { key: 'blood_group', label: 'Blood Group' },
+    { key: 'units_needed', label: 'Units' },
+    { key: 'urgency', label: 'Urgency' },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (value) => <StatusBadge status={value} label={value} />,
+    },
+  ]
+
+  const topDemandGroups = useMemo(() => {
+    return [...demandData]
+      .sort((a, b) => Number(b.units_needed) - Number(a.units_needed))
+      .slice(0, 6)
+  }, [report])
+
+  if (loading) {
+    return (
+      <div className="analytics-loading">
+        <div className="loading-spinner" />
+        <p>Loading BloodLink analytics...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="analytics-message">
+        <h2>Unable to load analytics</h2>
+        <p>{error}</p>
+        <button className="bl-primary-btn" onClick={loadReport}>
+          Try again
+        </button>
+      </div>
+    )
+  }
+
+  if (!report) {
+    return (
+      <div className="analytics-message">
+        <h2>No analytics data available</h2>
+        <p>Reports will appear here when data becomes available.</p>
+        <button className="bl-primary-btn" onClick={loadReport}>
+          Refresh
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <main className="bl-main">
+
+        <header className="bl-topbar">
+          <div>
+            <h2>Analytics & Reports</h2>
+            <p>Monitor blood stock, donations and demand.</p>
+          </div>
+
+          <div className="topbar-actions">
+            <button className="notification-btn" aria-label="Notifications">
+              ♧
+              <span />
+            </button>
+            <div className="topbar-avatar">KN</div>
+          </div>
+        </header>
+
+        <div className="analytics-content">
+
+          {/* Page heading */}
+          <SectionHeader
+            eyebrow="Operations overview"
+            title="Analytics & Reports"
+            description="Get insights into your hospital's blood stock and donation activities."
+            align="left"
+            action={
+              <button className="bl-outline-btn" onClick={() => window.print()}>
+                ↓ Export report
+              </button>
+            }
+          />
+
+          <PrimaryActionCard
+            eyebrow="Urgent review"
+            title="Three critical requests need attention"
+            description="Review inventory and dispatch priority units before the next donor cycle begins."
+            actionLabel="View queue"
+            onAction={() => setActiveTab('Demand Forecast')}
+            accent="red"
+          />
+
+          {/* Summary cards */}
+          <section className="bl-stats-grid">
+            {summaryCards.map((card) => (
+              <MetricCard
+                key={card.label}
+                icon={card.icon}
+                label={card.label}
+                value={card.value}
+                subtitle={card.subtitle}
+                tone={card.color}
+              />
+            ))}
+          </section>
+
+          {/* Tabs */}
+          <FilterTabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            variant="pill"
+          />
+
+          {/* Stock Levels */}
+          {activeTab === 'Stock Levels' && (
+            <>
+              <section className="analytics-chart-grid">
+
+                <article className="bl-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h3>Blood Stock Levels</h3>
+                      <p>Available units by blood group</p>
+                    </div>
+                    <span className="panel-icon">▥</span>
+                  </div>
+
+                  {stockData.length ? (
+                    <div className="vertical-chart">
+                      {stockData.map((item, index) => {
+                        const height = Math.max(
+                          2,
+                          (Number(item.units) / maxStockUnits) * 100
+                        )
+
+                        return (
+                          <div className="vertical-bar-item" key={item.blood_group}>
+                            <strong>{item.units}</strong>
+                            <div className="vertical-bar-track">
+                              <div
+                                className={`vertical-bar bar-${index % 5}`}
+                                style={{ height: `${height}%` }}
+                              />
+                            </div>
+                            <span>{item.blood_group}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <p className="empty-chart">
+                      No blood stock records available.
+                    </p>
+                  )}
+                </article>
+
+                <article className="bl-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h3>Blood Demand</h3>
+                      <p>Requested units by blood group</p>
+                    </div>
+                    <span className="panel-icon">♡</span>
+                  </div>
+
+                  {demandData.length ? (
+                    <div className="horizontal-chart">
+                      {demandData.map((item) => (
+                        <div className="horizontal-bar-item" key={item.blood_group}>
+                          <div className="horizontal-label">
+                            <span>{item.blood_group}</span>
+                            <strong>{item.units_needed} units</strong>
+                          </div>
+
+                          <div className="horizontal-track">
+                            <div
+                              className="horizontal-fill"
+                              style={{
+                                width: `${
+                                  (Number(item.units_needed) / maxDemandUnits) * 100
+                                }%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="empty-chart">
+                      No blood request records available.
+                    </p>
+                  )}
+                </article>
+              </section>
+
+              <section className="analytics-bottom-grid">
+
+                <article className="bl-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h3>Top Blood Types in Demand</h3>
+                      <p>Distribution of requested blood units</p>
+                    </div>
+                  </div>
+
+                  <div className="demand-groups">
+                    {topDemandGroups.map((item, index) => {
+                      const percentage = totalDemand
+                        ? Math.round(
+                            (Number(item.units_needed) / totalDemand) * 100
+                          )
+                        : 0
+
+                      return (
+                        <div className="demand-group" key={item.blood_group}>
+                          <div className={`blood-group-icon group-${index % 6}`}>
+                            {item.blood_group}
+                          </div>
+                          <strong>{percentage}%</strong>
+                          <small>{item.units_needed} units</small>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </article>
+
+                <article className="bl-panel">
+                  <div className="panel-heading">
+                    <div>
+                      <h3>Report Summary</h3>
+                      <p>Current hospital statistics</p>
+                    </div>
+                  </div>
+
+                  <div className="summary-list">
+                    <div>
+                      <span>Total stock units</span>
+                      <strong>
+                        {numberFormat.format(overview.total_stock_units ?? 0)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Total pending requests</span>
+                      <strong>
+                        {numberFormat.format(overview.pending_requests ?? 0)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span>Total requested units</span>
+                      <strong>{numberFormat.format(totalDemand)}</strong>
+                    </div>
+                    <div>
+                      <span>Stock records</span>
+                      <strong>{stockData.length}</strong>
+                    </div>
+                  </div>
+                </article>
+
+              </section>
+            </>
+          )}
+
+          {/* Donor Trends */}
+          {activeTab === 'Donor Trends' && (
+            <Panel title="Donation Trends" subtitle="Historical donation data by time window">
+              <EmptyState
+                icon="↗"
+                title="Donation Trends"
+                description="Historical donation data will appear here once the backend provides donation records grouped by date."
+              />
+            </Panel>
+          )}
+
+          {/* Demand Forecast */}
+          {activeTab === 'Demand Forecast' && (
+            <Panel
+              title="Demand Analysis"
+              subtitle="Current blood demand by group"
+            >
+              {demandData.length ? (
+                <>
+                  <div className="horizontal-chart forecast-chart">
+                    {demandData.map((item) => (
+                      <div className="horizontal-bar-item" key={item.blood_group}>
+                        <div className="horizontal-label">
+                          <span>{item.blood_group}</span>
+                          <strong>{item.units_needed} units</strong>
+                        </div>
+                        <div className="horizontal-track">
+                          <div
+                            className="horizontal-fill"
+                            style={{
+                              width: `${
+                                (Number(item.units_needed) / maxDemandUnits) * 100
+                              }%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="forecast-note">
+                    This represents recorded demand, not a prediction of future
+                    demand. Forecasting requires historical time-series data.
+                  </p>
+                </>
+              ) : (
+                <EmptyState
+                  icon="♡"
+                  title="No demand data available"
+                  description="The demand forecast panel will populate once the backend returns blood-demand trends."
+                />
+              )}
+            </Panel>
+          )}
+
+          {/* Recent requests */}
+          <section className="bl-panel requests-panel">
+            <SectionHeader
+              eyebrow="Latest activity"
+              title="Recent Blood Requests"
+              description="Latest hospital blood request activity"
+              align="left"
+            />
+
+            <DataTable
+              columns={recentRequestColumns}
+              rows={recentRequests}
+              emptyMessage="No recent requests found."
+            />
+          </section>
+
+          <footer className="analytics-footer">
+            BloodLink · Together we save lives.
+          </footer>
+
+        </div>
+      </main>
+  )
+}
+
+export default AnalyticsDashboard
+=======
+>>>>>>> 1f785f69ff7f0d915f620a188fef7e653c811bf4
