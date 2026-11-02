@@ -120,3 +120,40 @@ def cancel_blood_request(
     db.refresh(blood_request)
 
     return blood_request
+
+
+def update_blood_request_status(
+    db: Session,
+    blood_request: BloodRequest,
+    new_status: BloodRequestStatus,
+) -> BloodRequest:
+    """Apply an allowed blood-request status transition."""
+
+    current_status = blood_request.status
+
+    allowed_transitions = {
+        BloodRequestStatus.PENDING: {
+            BloodRequestStatus.FULFILLED,
+            BloodRequestStatus.CANCELLED,
+        },
+        BloodRequestStatus.FULFILLED: set(),
+        BloodRequestStatus.CANCELLED: set(),
+    }
+
+    if new_status == current_status:
+        return blood_request
+
+    if new_status not in allowed_transitions[current_status]:
+        raise ValueError(
+            f"Cannot change a request from "
+            f"'{current_status.value}' to '{new_status.value}'."
+        )
+
+    try:
+        blood_request.status = new_status
+        db.commit()
+        db.refresh(blood_request)
+        return blood_request
+    except Exception:
+        db.rollback()
+        raise
