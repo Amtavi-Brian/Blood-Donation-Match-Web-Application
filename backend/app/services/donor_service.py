@@ -1,4 +1,3 @@
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -11,9 +10,9 @@ from app.schemas.donor import (
 )
 
 
-# ---------------------------------------------------------
-# AUDIT LOGGING HELPER
-# ---------------------------------------------------------
+class InvalidDonorLocationError(ValueError):
+    """Raised when donor location information is invalid."""
+
 
 def add_audit_entry(
     db: Session,
@@ -29,13 +28,24 @@ def add_audit_entry(
         entity_id=profile_id,
         description=description,
     )
-
     db.add(audit)
 
 
-# ---------------------------------------------------------
-# CREATE DONOR PROFILE
-# ---------------------------------------------------------
+def validate_donor_location(data: dict) -> None:
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    consent = data.get("consent_to_share_location", False)
+
+    if (latitude is None) != (longitude is None):
+        raise InvalidDonorLocationError(
+            "Both latitude and longitude must be provided together."
+        )
+
+    if consent and (latitude is None or longitude is None):
+        raise InvalidDonorLocationError(
+            "Provide your location before enabling location sharing."
+        )
+
 
 def create_donor_profile(
     db: Session,
@@ -43,7 +53,6 @@ def create_donor_profile(
     profile_data: DonorProfileCreate,
 ) -> DonorProfile:
 
-    # Only donor accounts can create donor profiles.
     if user.role != UserRole.DONOR:
         raise ValueError(
             "Only donor accounts can create donor profiles."
@@ -54,7 +63,6 @@ def create_donor_profile(
             "An active account is required to create a donor profile."
         )
 
-    # Check whether the user already has a donor profile.
     existing_profile = db.scalar(
         select(DonorProfile).where(
             DonorProfile.user_id == user.id
@@ -66,18 +74,17 @@ def create_donor_profile(
             "You already have a donor profile."
         )
 
+    profile_values = profile_data.model_dump()
+
+    validate_donor_location(profile_values)
+
     profile = DonorProfile(
         user_id=user.id,
-        blood_group=profile_data.blood_group,
-        city=profile_data.city,
-        available_to_contact=profile_data.available_to_contact,
-        consent_to_contact=profile_data.consent_to_contact,
+        **profile_values,
     )
 
     try:
         db.add(profile)
-
-        # Generate profile ID before creating the audit record.
         db.flush()
 
         add_audit_entry(
@@ -100,10 +107,6 @@ def create_donor_profile(
     return profile
 
 
-# ---------------------------------------------------------
-# GET DONOR PROFILE
-# ---------------------------------------------------------
-
 def get_donor_profile(
     db: Session,
     user_id: int,
@@ -116,10 +119,6 @@ def get_donor_profile(
     return db.scalar(statement)
 
 
-# ---------------------------------------------------------
-# UPDATE DONOR PROFILE
-# ---------------------------------------------------------
-
 def update_donor_profile(
     db: Session,
     user_id: int,
@@ -131,13 +130,33 @@ def update_donor_profile(
     if profile is None:
         return None
 
-    # Only update fields explicitly supplied by the user.
     update_data = profile_data.model_dump(
         exclude_unset=True
     )
 
     if not update_data:
         return profile
+
+    # Validate the final location state, not just the fields
+    # supplied in this update.
+    current_location = {
+        "latitude": profile.latitude,
+        "longitude": profile.longitude,
+        "consent_to_share_location": (
+            profile.consent_to_share_location
+        ),
+    }
+
+    final_location = {
+        **current_location,
+        **{
+            key: value
+            for key, value in update_data.items()
+            if key in current_location
+        },
+    }
+
+    validate_donor_location(final_location)
 
     try:
         changed_fields = []
@@ -147,7 +166,6 @@ def update_donor_profile(
                 setattr(profile, field, value)
                 changed_fields.append(field)
 
-        # Do not create audit records when nothing changed.
         if not changed_fields:
             return profile
 

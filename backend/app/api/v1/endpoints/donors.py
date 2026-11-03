@@ -1,4 +1,3 @@
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -11,7 +10,11 @@ from app.schemas.donor import (
 )
 from app.services import donor_service
 
-router = APIRouter(prefix="/donors", tags=["Donors"])
+
+router = APIRouter(
+    prefix="/donors",
+    tags=["Donors"],
+)
 
 
 def require_donor(user: User) -> None:
@@ -36,10 +39,17 @@ def create_my_donor_profile(
 
     try:
         return donor_service.create_donor_profile(
-            db,
-            current_user,
-            profile_data,
+            db=db,
+            user=current_user,
+            profile_data=profile_data,
         )
+
+    except donor_service.InvalidDonorLocationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -47,14 +57,20 @@ def create_my_donor_profile(
         ) from exc
 
 
-@router.get("/me", response_model=DonorProfileResponse)
+@router.get(
+    "/me",
+    response_model=DonorProfileResponse,
+)
 def read_my_donor_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     require_donor(current_user)
 
-    profile = donor_service.get_donor_profile(db, current_user.id)
+    profile = donor_service.get_donor_profile(
+        db=db,
+        user_id=current_user.id,
+    )
 
     if profile is None:
         raise HTTPException(
@@ -65,7 +81,10 @@ def read_my_donor_profile(
     return profile
 
 
-@router.put("/me", response_model=DonorProfileResponse)
+@router.put(
+    "/me",
+    response_model=DonorProfileResponse,
+)
 def update_my_donor_profile(
     profile_data: DonorProfileUpdate,
     db: Session = Depends(get_db),
@@ -73,11 +92,18 @@ def update_my_donor_profile(
 ):
     require_donor(current_user)
 
-    profile = donor_service.update_donor_profile(
-        db,
-        current_user.id,
-        profile_data,
-    )
+    try:
+        profile = donor_service.update_donor_profile(
+            db=db,
+            user_id=current_user.id,
+            profile_data=profile_data,
+        )
+
+    except donor_service.InvalidDonorLocationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
     if profile is None:
         raise HTTPException(

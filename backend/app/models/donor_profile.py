@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.models.user import User
 
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, Float
+
 
 class BloodGroup(str, enum.Enum):
     A_POSITIVE = "A+"
@@ -41,6 +43,15 @@ class DonorProfile(Base):
     city: Mapped[str | None] = mapped_column(String(100))
     available_to_contact: Mapped[bool] = mapped_column(
         Boolean, default=True, nullable=False
+    )
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    consent_to_share_location: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False,
+    server_default="0",
+    nullable=False
     )
 
     consent_to_contact: Mapped[bool] = mapped_column(
