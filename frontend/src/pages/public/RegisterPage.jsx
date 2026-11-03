@@ -1,4 +1,3 @@
-import "./public.css";
 import DonorRegisterForm from "../../componenets/forms/DonorRegisterForm";
 
 export default function RegisterPage() {

@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginUser } from "../../services/authService";
-import Input from "../ui/Input";
-import PasswordInput from "../ui/PasswordInput";
-import Button from "../ui/Button";
 
-// Placeholder paths: they must match what AppRoutes defines later.
 const ROLE_HOME = { donor: "/donor", hospital: "/hospital", admin: "/admin" };
 
 export default function LoginForm() {
@@ -14,6 +10,7 @@ export default function LoginForm() {
   const justRegistered = location.state?.registered;
 
   const [values, setValues] = useState({ email: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -53,22 +50,36 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit} noValidate>
       {justRegistered && (
-        <p className="form-success">Account created. You can log in now.</p>
+        <p className="pub-form-success">Account created. You can log in now.</p>
       )}
 
-      <Input label="Email" name="email" type="email" autoComplete="email"
-             value={values.email} onChange={handleChange} error={errors.email} />
+      <div className={`pub-field ${errors.email ? "pub-has-error" : ""}`}>
+        <label htmlFor="email">Email</label>
+        <input id="email" name="email" type="email" autoComplete="email"
+               value={values.email} onChange={handleChange} />
+        {errors.email && <p className="pub-field-error" role="alert">{errors.email}</p>}
+      </div>
 
-      <PasswordInput label="Password" name="password" autoComplete="current-password"
-                     value={values.password} onChange={handleChange} error={errors.password} />
+      <div className={`pub-field ${errors.password ? "pub-has-error" : ""}`}>
+        <label htmlFor="password">Password</label>
+        <div className="pub-password">
+          <input id="password" name="password" autoComplete="current-password"
+                 type={showPassword ? "text" : "password"}
+                 value={values.password} onChange={handleChange} />
+          <button type="button" onClick={() => setShowPassword((v) => !v)}>
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
+        {errors.password && <p className="pub-field-error" role="alert">{errors.password}</p>}
+      </div>
 
-      {serverError && <p className="form-error" role="alert">{serverError}</p>}
+      {serverError && <p className="pub-form-error" role="alert">{serverError}</p>}
 
-      <Button type="submit" block disabled={isSubmitting}>
+      <button className="pub-btn pub-btn-primary pub-btn-block" type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Logging in..." : "Log in"}
-      </Button>
+      </button>
 
-      <p className="form-switch">
+      <p className="pub-switch">
         New here? <Link to="/register">Create a donor account</Link>
       </p>
     </form>

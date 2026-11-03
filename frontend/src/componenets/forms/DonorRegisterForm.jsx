@@ -3,10 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../../services/authService";
 import { BLOOD_TYPES } from "../../utils/constants";
 import { isValidKenyanPhone } from "../../utils/validators";
-import Input from "../ui/Input";
-import PasswordInput from "../ui/PasswordInput";
-import Select from "../ui/Select";
-import Button from "../ui/Button";
 
 export default function DonorRegisterForm() {
   const navigate = useNavigate();
@@ -14,11 +10,12 @@ export default function DonorRegisterForm() {
   const [values, setValues] = useState({
     fullName: "", phone: "", email: "", password: "", bloodType: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [coords, setCoords] = useState(null); // { latitude, longitude } or null
+  const [coords, setCoords] = useState(null);
   const [locationMessage, setLocationMessage] = useState("");
 
   function handleChange(e) {
@@ -78,36 +75,64 @@ export default function DonorRegisterForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <Input label="Full name" name="fullName" autoComplete="name"
-             value={values.fullName} onChange={handleChange} error={errors.fullName} />
+      <div className={`pub-field ${errors.fullName ? "pub-has-error" : ""}`}>
+        <label htmlFor="fullName">Full name</label>
+        <input id="fullName" name="fullName" autoComplete="name"
+               value={values.fullName} onChange={handleChange} />
+        {errors.fullName && <p className="pub-field-error" role="alert">{errors.fullName}</p>}
+      </div>
 
-      <Input label="Phone number" name="phone" type="tel" autoComplete="tel"
-             placeholder="0712 345 678"
-             value={values.phone} onChange={handleChange} error={errors.phone} />
+      <div className={`pub-field ${errors.phone ? "pub-has-error" : ""}`}>
+        <label htmlFor="phone">Phone number</label>
+        <input id="phone" name="phone" type="tel" autoComplete="tel" placeholder="0712 345 678"
+               value={values.phone} onChange={handleChange} />
+        {errors.phone && <p className="pub-field-error" role="alert">{errors.phone}</p>}
+      </div>
 
-      <Input label="Email" name="email" type="email" autoComplete="email"
-             value={values.email} onChange={handleChange} error={errors.email} />
+      <div className={`pub-field ${errors.email ? "pub-has-error" : ""}`}>
+        <label htmlFor="email">Email</label>
+        <input id="email" name="email" type="email" autoComplete="email"
+               value={values.email} onChange={handleChange} />
+        {errors.email && <p className="pub-field-error" role="alert">{errors.email}</p>}
+      </div>
 
-      <PasswordInput label="Password" name="password" autoComplete="new-password"
-                     value={values.password} onChange={handleChange} error={errors.password} />
+      <div className={`pub-field ${errors.password ? "pub-has-error" : ""}`}>
+        <label htmlFor="password">Password</label>
+        <div className="pub-password">
+          <input id="password" name="password" autoComplete="new-password"
+                 type={showPassword ? "text" : "password"}
+                 value={values.password} onChange={handleChange} />
+          <button type="button" onClick={() => setShowPassword((v) => !v)}>
+            {showPassword ? "Hide" : "Show"}
+          </button>
+        </div>
+        {errors.password && <p className="pub-field-error" role="alert">{errors.password}</p>}
+      </div>
 
-      <Select label="Blood type" name="bloodType" options={BLOOD_TYPES}
-              placeholder="Select blood type"
-              value={values.bloodType} onChange={handleChange} error={errors.bloodType} />
+      <div className={`pub-field ${errors.bloodType ? "pub-has-error" : ""}`}>
+        <label htmlFor="bloodType">Blood type</label>
+        <select id="bloodType" name="bloodType" value={values.bloodType} onChange={handleChange}>
+          <option value="">Select blood type</option>
+          {BLOOD_TYPES.map((type) => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+        {errors.bloodType && <p className="pub-field-error" role="alert">{errors.bloodType}</p>}
+      </div>
 
-      <Button variant="ghost" block onClick={handleUseLocation}>
+      <button type="button" className="pub-btn pub-btn-ghost pub-btn-block" onClick={handleUseLocation}>
         Use my current location
-      </Button>
-      <p className="location-msg">{locationMessage}</p>
+      </button>
+      <p className="pub-location-msg">{locationMessage}</p>
 
-      {serverError && <p className="form-error" role="alert">{serverError}</p>}
+      {serverError && <p className="pub-form-error" role="alert">{serverError}</p>}
 
-      <Button type="submit" block disabled={isSubmitting}>
+      <button className="pub-btn pub-btn-primary pub-btn-block" type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Creating account..." : "Create Account"}
-      </Button>
+      </button>
 
-      <p className="form-note">Protected under Kenya's Data Protection Act</p>
-      <p className="form-switch">
+      <p className="pub-note">Protected under Kenya's Data Protection Act</p>
+      <p className="pub-switch">
         Already registered? <Link to="/login">Log in</Link>
       </p>
     </form>
