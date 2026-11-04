@@ -10,6 +10,9 @@ class HospitalCreate(BaseModel):
     address: str = Field(min_length=5)
     city: str = Field(min_length=2, max_length=100)
     contact_phone: str = Field(min_length=7, max_length=30)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    consent_to_share_location: bool = False
 
 
 class HospitalUpdate(BaseModel):
@@ -17,6 +20,8 @@ class HospitalUpdate(BaseModel):
     address: str | None = Field(default=None, min_length=5)
     city: str | None = Field(default=None, min_length=2, max_length=100)
     contact_phone: str | None = Field(default=None, min_length=7, max_length=30)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    longitude: float | None = Field(default=None, ge=-180, le=180)
 
 
 class HospitalResponse(BaseModel):
@@ -30,6 +35,8 @@ class HospitalResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+    latitude: float | None
+    longitude: float | None
 
 
 class HospitalStaffCreate(BaseModel):

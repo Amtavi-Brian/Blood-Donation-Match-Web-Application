@@ -1,132 +1,191 @@
-
-from datetime import datetime, timezone
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.donation_record import DonationRecord
-from app.models.donor_profile import BloodGroup, DonorProfile
-from app.models.hospital import Hospital
+from app.models.audit_log import AuditLog
+from app.models.donor_profile import DonorProfile
 from app.models.user import User, UserRole
+from app.schemas.donor import (
+    DonorProfileCreate,
+    DonorProfileUpdate,
+)
 
 
-def create_donation(
+class InvalidDonorLocationError(ValueError):
+    """Raised when donor location information is invalid."""
+
+
+def add_audit_entry(
     db: Session,
-    donor_id: int,
-    hospital_id: int,
-    blood_type: BloodGroup,
-    quantity: int,
-    donated_at: datetime | None = None,
-) -> DonationRecord:
-    if quantity <= 0 or quantity > 10000:
-        raise ValueError("Quantity must be between 1 and 10000.")
+    user_id: int,
+    action: str,
+    profile_id: int,
+    description: str,
+) -> None:
+    audit = AuditLog(
+        user_id=user_id,
+        action=action,
+        entity_type="donor_profile",
+        entity_id=profile_id,
+        description=description,
+    )
+    db.add(audit)
 
-    if donated_at is None:
-        donated_at = datetime.now(timezone.utc)
-    elif donated_at.tzinfo is None:
-        donated_at = donated_at.replace(tzinfo=timezone.utc)
 
-    if donated_at > datetime.now(timezone.utc):
-        raise ValueError("Donation date cannot be in the future.")
+def validate_donor_location(data: dict) -> None:
+    latitude = data.get("latitude")
+    longitude = data.get("longitude")
+    consent = data.get("consent_to_share_location", False)
 
-    donor = db.get(DonorProfile, donor_id)
-    if donor is None:
-        raise ValueError("Donor profile not found.")
-
-    donor_user = donor.user
-    if (
-        donor_user is None
-        or not donor_user.is_active
-        or donor_user.role != UserRole.DONOR
-    ):
-        raise ValueError("An active donor account is required.")
-
-    hospital = db.get(Hospital, hospital_id)
-    if hospital is None or not hospital.is_verified:
-        raise ValueError("Verified hospital not found.")
-
-    if blood_type != donor.blood_group:
-        raise ValueError(
-            "Recorded blood group must match the donor profile."
+    if (latitude is None) != (longitude is None):
+        raise InvalidDonorLocationError(
+            "Both latitude and longitude must be provided together."
         )
 
-    donation = DonationRecord(
-        donor_id=donor_id,
-        hospital_id=hospital_id,
-        blood_type=blood_type,
-        quantity=quantity,
-        donated_at=donated_at,
-        verified=False,
-    )
-
-    try:
-        db.add(donation)
-        db.commit()
-        db.refresh(donation)
-    except Exception:
-        db.rollback()
-        raise
-
-    return donation
+    if consent and (latitude is None or longitude is None):
+        raise InvalidDonorLocationError(
+            "Provide your location before enabling location sharing."
+        )
 
 
-def list_donations_for_donor(
-    db: Session,
-    donor_id: int,
-) -> list[DonationRecord]:
-    statement = (
-        select(DonationRecord)
-        .where(DonationRecord.donor_id == donor_id)
-        .order_by(DonationRecord.donated_at.desc())
-    )
-    return list(db.scalars(statement).all())
-
-
-def list_donations_for_hospital(
-    db: Session,
-    hospital_id: int,
-) -> list[DonationRecord]:
-    statement = (
-        select(DonationRecord)
-        .where(DonationRecord.hospital_id == hospital_id)
-        .order_by(DonationRecord.donated_at.desc())
-    )
-    return list(db.scalars(statement).all())
-
-
-def verify_donation(
-    db: Session,
-    donation_id: int,
-    hospital_id: int,
-) -> DonationRecord | None:
-    statement = select(DonationRecord).where(
-        DonationRecord.donation_id == donation_id,
-        DonationRecord.hospital_id == hospital_id,
-    )
-    donation = db.scalar(statement)
-
-    if donation is None:
-        return None
-
-    if not donation.verified:
-        try:
-            donation.verified = True
-            db.commit()
-            db.refresh(donation)
-        except Exception:
-            db.rollback()
-            raise
-
-    return donation
-
-
-def get_donor_id_for_user(
+def create_donor_profile(
     db: Session,
     user: User,
-) -> int | None:
-    donor = db.scalar(
+    profile_data: DonorProfileCreate,
+) -> DonorProfile:
+
+    if user.role != UserRole.DONOR:
+        raise ValueError(
+            "Only donor accounts can create donor profiles."
+        )
+
+    if not user.is_active:
+        raise ValueError(
+            "An active account is required to create a donor profile."
+        )
+
+    existing_profile = db.scalar(
         select(DonorProfile).where(
             DonorProfile.user_id == user.id
         )
     )
-    return donor.id if donor else None
+
+    if existing_profile is not None:
+        raise ValueError(
+            "You already have a donor profile."
+        )
+
+    profile_values = profile_data.model_dump()
+
+    validate_donor_location(profile_values)
+
+    profile = DonorProfile(
+        user_id=user.id,
+        **profile_values,
+    )
+
+    try:
+        db.add(profile)
+        db.flush()
+
+        add_audit_entry(
+            db=db,
+            user_id=user.id,
+            action="donor_profile_created",
+            profile_id=profile.id,
+            description=(
+                f"Created donor profile with ID {profile.id}."
+            ),
+        )
+
+        db.commit()
+        db.refresh(profile)
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return profile
+
+
+def get_donor_profile(
+    db: Session,
+    user_id: int,
+) -> DonorProfile | None:
+
+    statement = select(DonorProfile).where(
+        DonorProfile.user_id == user_id
+    )
+
+    return db.scalar(statement)
+
+
+def update_donor_profile(
+    db: Session,
+    user_id: int,
+    profile_data: DonorProfileUpdate,
+) -> DonorProfile | None:
+
+    profile = get_donor_profile(db, user_id)
+
+    if profile is None:
+        return None
+
+    update_data = profile_data.model_dump(
+        exclude_unset=True
+    )
+
+    if not update_data:
+        return profile
+
+    # Validate the final location state, not just the fields
+    # supplied in this update.
+    current_location = {
+        "latitude": profile.latitude,
+        "longitude": profile.longitude,
+        "consent_to_share_location": (
+            profile.consent_to_share_location
+        ),
+    }
+
+    final_location = {
+        **current_location,
+        **{
+            key: value
+            for key, value in update_data.items()
+            if key in current_location
+        },
+    }
+
+    validate_donor_location(final_location)
+
+    try:
+        changed_fields = []
+
+        for field, value in update_data.items():
+            if getattr(profile, field) != value:
+                setattr(profile, field, value)
+                changed_fields.append(field)
+
+        if not changed_fields:
+            return profile
+
+        add_audit_entry(
+            db=db,
+            user_id=user_id,
+            action="donor_profile_updated",
+            profile_id=profile.id,
+            description=(
+                "Updated donor profile fields: "
+                + ", ".join(changed_fields)
+                + "."
+            ),
+        )
+
+        db.commit()
+        db.refresh(profile)
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return profile

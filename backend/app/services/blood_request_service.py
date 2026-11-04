@@ -1,18 +1,37 @@
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
-from app.models.hospital import Hospital
 
+from app.models.hospital import Hospital
+from app.models.hospital_user import HospitalUser
+from app.models.user import User, UserRole
+from app.models.audit_log import AuditLog
 from app.models.blood_request import (
     BloodRequest,
     BloodRequestStatus,
 )
-from app.models.hospital_user import HospitalUser
-from app.models.user import User, UserRole
 from app.schemas.blood_request import (
     BloodRequestCreate,
     BloodRequestUpdate,
 )
 
+
+def add_audit_entry(
+    db: Session,
+    user_id: int,
+    action: str,
+    entity_id: int,
+    description: str,
+) -> None:
+    db.add(
+        AuditLog(
+            user_id=user_id,
+            action=action,
+            entity_type="blood_request",
+            entity_id=entity_id,
+            description=description,
+        )
+    )
 
 
 def get_authorized_hospital_id(
@@ -41,25 +60,44 @@ def create_blood_request(
     db: Session,
     hospital_id: int,
     request_data: BloodRequestCreate,
+    performed_by_user_id: int,
 ) -> BloodRequest:
+    hospital = db.get(Hospital, hospital_id)
+
+    if hospital is None or not hospital.is_verified:
+        raise ValueError("A verified hospital is required.")
+
     blood_request = BloodRequest(
         hospital_id=hospital_id,
         **request_data.model_dump(),
     )
 
-    db.add(blood_request)
-    db.commit()
-    db.refresh(blood_request)
+    try:
+        db.add(blood_request)
+        db.flush()
 
-    return blood_request
+        add_audit_entry(
+            db,
+            performed_by_user_id,
+            "blood_request_created",
+            blood_request.id,
+            "A new blood request was created.",
+        )
 
+        db.commit()
+        db.refresh(blood_request)
+        return blood_request
+
+    except Exception:
+        db.rollback()
+        raise
 
 
 def list_blood_requests(
     db: Session,
     status_filter: BloodRequestStatus | None = None,
 ) -> list[BloodRequest]:
-    """List requests from verified hospitals, excluding cancelled ones by default."""
+    """List requests from verified hospitals."""
     statement = (
         select(BloodRequest)
         .join(Hospital, Hospital.id == BloodRequest.hospital_id)
@@ -80,7 +118,6 @@ def list_blood_requests(
     return list(db.scalars(statement).all())
 
 
-
 def get_blood_request(
     db: Session,
     request_id: int,
@@ -98,36 +135,44 @@ def update_blood_request(
     db: Session,
     blood_request: BloodRequest,
     update_data: BloodRequestUpdate,
+    performed_by_user_id: int,
 ) -> BloodRequest:
     changes = update_data.model_dump(exclude_unset=True)
 
-    for field, value in changes.items():
-        setattr(blood_request, field, value)
+    if not changes:
+        raise ValueError("At least one field must be provided.")
 
-    db.commit()
-    db.refresh(blood_request)
+    if blood_request.status != BloodRequestStatus.PENDING:
+        raise ValueError("Only pending requests can be updated.")
 
-    return blood_request
+    try:
+        for field, value in changes.items():
+            setattr(blood_request, field, value)
 
+        add_audit_entry(
+            db,
+            performed_by_user_id,
+            "blood_request_updated",
+            blood_request.id,
+            "Blood request details were updated.",
+        )
 
-def cancel_blood_request(
-    db: Session,
-    blood_request: BloodRequest,
-) -> BloodRequest:
-    blood_request.status = BloodRequestStatus.CANCELLED
+        db.commit()
+        db.refresh(blood_request)
+        return blood_request
 
-    db.commit()
-    db.refresh(blood_request)
-
-    return blood_request
+    except Exception:
+        db.rollback()
+        raise
 
 
 def update_blood_request_status(
     db: Session,
     blood_request: BloodRequest,
     new_status: BloodRequestStatus,
+    performed_by_user_id: int,
 ) -> BloodRequest:
-    """Apply an allowed blood-request status transition."""
+    """Apply an allowed status transition and record it in the audit log."""
 
     current_status = blood_request.status
 
@@ -151,9 +196,31 @@ def update_blood_request_status(
 
     try:
         blood_request.status = new_status
+
+        action = (
+            "blood_request_fulfilled"
+            if new_status == BloodRequestStatus.FULFILLED
+            else "blood_request_cancelled"
+        )
+
+        description = (
+            "Blood request was marked as fulfilled."
+            if new_status == BloodRequestStatus.FULFILLED
+            else "Blood request was cancelled."
+        )
+
+        add_audit_entry(
+            db,
+            performed_by_user_id,
+            action,
+            blood_request.id,
+            description,
+        )
+
         db.commit()
         db.refresh(blood_request)
         return blood_request
+
     except Exception:
         db.rollback()
         raise

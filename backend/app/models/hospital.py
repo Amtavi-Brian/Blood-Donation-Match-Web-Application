@@ -1,7 +1,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, String, Text
+from sqlalchemy import Boolean, DateTime, String, Text, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.models.blood_request import BloodRequest
+
 
 
 class Hospital(Base):
@@ -21,6 +22,8 @@ class Hospital(Base):
     )
     address: Mapped[str] = mapped_column(Text, nullable=False)
     city: Mapped[str] = mapped_column(String(100), nullable=False)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     contact_phone: Mapped[str] = mapped_column(String(30), nullable=False)
     is_verified: Mapped[bool] = mapped_column(
         Boolean, default=False, nullable=False

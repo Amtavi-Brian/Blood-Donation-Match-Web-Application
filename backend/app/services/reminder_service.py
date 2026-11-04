@@ -6,6 +6,27 @@ from sqlalchemy.orm import Session
 from app.models.user import User
 from app.models.reminder import Reminder, ReminderStatus
 from app.models.notififcation import Notification
+from app.models.audit_log import AuditLog
+
+
+def add_audit_entry(
+    db: Session,
+    user_id: int | None,
+    action: str,
+    entity_id: int,
+    description: str,
+) -> None:
+    """Add an audit record to the current transaction."""
+
+    db.add(
+        AuditLog(
+            user_id=user_id,
+            action=action,
+            entity_type="reminder",
+            entity_id=entity_id,
+            description=description,
+        )
+    )
 
 
 def create_reminder(
@@ -38,12 +59,26 @@ def create_reminder(
         status=ReminderStatus.PENDING,
     )
 
-    db.add(reminder)
-
     try:
+        db.add(reminder)
+        db.flush()
+
+        add_audit_entry(
+            db=db,
+            user_id=user_id,
+            action="reminder_created",
+            entity_id=reminder.reminder_id,
+            description=(
+                f"User {user_id} created a "
+                f"{reminder.reminder_type} reminder."
+            ),
+        )
+
         db.commit()
         db.refresh(reminder)
+
         return reminder
+
     except Exception:
         db.rollback()
         raise
@@ -104,12 +139,25 @@ def cancel_reminder(
     if reminder.status != ReminderStatus.PENDING:
         raise ValueError("Only pending reminders can be cancelled.")
 
-    reminder.status = ReminderStatus.CANCELLED
-
     try:
+        reminder.status = ReminderStatus.CANCELLED
+
+        add_audit_entry(
+            db=db,
+            user_id=user_id,
+            action="reminder_cancelled",
+            entity_id=reminder.reminder_id,
+            description=(
+                f"User {user_id} cancelled reminder "
+                f"{reminder.reminder_id}."
+            ),
+        )
+
         db.commit()
         db.refresh(reminder)
+
         return reminder
+
     except Exception:
         db.rollback()
         raise
@@ -122,8 +170,8 @@ def process_due_reminders(
     """
     Convert due reminders into internal notifications.
 
-    The reminder status and notification are committed together
-    to avoid marking a reminder as sent without creating its notification.
+    Reminder updates, notifications, and the audit entry
+    are committed together.
     """
 
     now = datetime.now(timezone.utc)
@@ -139,7 +187,11 @@ def process_due_reminders(
         .all()
     )
 
+    if not due_reminders:
+        return 0
+
     processed_count = 0
+    first_reminder_id = due_reminders[0].reminder_id
 
     try:
         for reminder in due_reminders:
@@ -158,7 +210,20 @@ def process_due_reminders(
 
             processed_count += 1
 
+        add_audit_entry(
+            db=db,
+            user_id=None,
+            action="reminders_processed",
+            entity_id=first_reminder_id,
+            description=(
+                f"Automated reminder processing completed. "
+                f"{processed_count} reminder(s) were processed "
+                f"and converted into notifications."
+            ),
+        )
+
         db.commit()
+
         return processed_count
 
     except Exception:

@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -14,7 +15,10 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
     response_model=UserResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def register(user_data: UserCreate, db: Session = Depends(get_db)):
+def register(
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
+):
     new_user = user_service.create_user(db, user_data)
 
     if new_user is None:
@@ -27,11 +31,18 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=Token)
-def login(user_data: UserLogin, db: Session = Depends(get_db)):
+def login(
+    user_data: UserLogin,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    client_ip = request.client.host if request.client else None
+
     authenticated_user = user_service.authenticate_user(
-        db,
-        str(user_data.email),
-        user_data.password,
+        db=db,
+        email=str(user_data.email),
+        password=user_data.password,
+        ip_address=client_ip,
     )
 
     if authenticated_user is None:
@@ -41,7 +52,9 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(subject=str(authenticated_user.id))
+    access_token = create_access_token(
+        subject=str(authenticated_user.id)
+    )
 
     return {
         "access_token": access_token,

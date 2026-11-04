@@ -1,15 +1,23 @@
-
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import User, UserRole
-from app.schemas.hospital import HospitalCreate, HospitalResponse, HospitalUpdate, HospitalStaffResponse
-from app.schemas.hospital import HospitalStaffCreate
+from app.schemas.hospital import (
+    HospitalCreate,
+    HospitalResponse,
+    HospitalUpdate,
+    HospitalStaffResponse,
+    HospitalStaffCreate,
+)
 from app.services import hospital_service
 
-router = APIRouter(prefix="/hospitals", tags=["Hospitals"])
+
+router = APIRouter(
+    prefix="/hospitals",
+    tags=["Hospitals"],
+)
 
 
 @router.post(
@@ -28,18 +36,35 @@ def register_hospital(
             detail="Only administrators can register hospitals.",
         )
 
-    hospital = hospital_service.create_hospital(db, hospital_data)
+    try:
+        hospital = hospital_service.create_hospital(
+            db=db,
+            hospital_data=hospital_data,
+            performed_by_user_id=current_user.id,
+        )
+
+    except hospital_service.InvalidHospitalLocationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
     if hospital is None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="A hospital with this registration number already exists.",
+            detail=(
+                "A hospital with this registration number "
+                "already exists."
+            ),
         )
 
     return hospital
 
 
-@router.get("/", response_model=list[HospitalResponse])
+@router.get(
+    "/",
+    response_model=list[HospitalResponse],
+)
 def list_hospitals(
     city: str | None = Query(default=None, max_length=100),
     verified_only: bool = True,
@@ -47,19 +72,25 @@ def list_hospitals(
     current_user: User = Depends(get_current_user),
 ):
     return hospital_service.list_hospitals(
-        db,
+        db=db,
         city=city,
         verified_only=verified_only,
     )
 
 
-@router.get("/{hospital_id}", response_model=HospitalResponse)
+@router.get(
+    "/{hospital_id}",
+    response_model=HospitalResponse,
+)
 def get_hospital(
     hospital_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    hospital = hospital_service.get_hospital(db, hospital_id)
+    hospital = hospital_service.get_hospital(
+        db=db,
+        hospital_id=hospital_id,
+    )
 
     if hospital is None or not hospital.is_verified:
         raise HTTPException(
@@ -70,7 +101,10 @@ def get_hospital(
     return hospital
 
 
-@router.patch("/{hospital_id}", response_model=HospitalResponse)
+@router.patch(
+    "/{hospital_id}",
+    response_model=HospitalResponse,
+)
 def update_hospital(
     hospital_id: int,
     hospital_data: HospitalUpdate,
@@ -83,7 +117,10 @@ def update_hospital(
             detail="Only administrators can update hospital details.",
         )
 
-    hospital = hospital_service.get_hospital(db, hospital_id)
+    hospital = hospital_service.get_hospital(
+        db=db,
+        hospital_id=hospital_id,
+    )
 
     if hospital is None:
         raise HTTPException(
@@ -91,7 +128,19 @@ def update_hospital(
             detail="Hospital not found.",
         )
 
-    return hospital_service.update_hospital(db, hospital, hospital_data)
+    try:
+        return hospital_service.update_hospital(
+            db=db,
+            hospital=hospital,
+            hospital_data=hospital_data,
+            performed_by_user_id=current_user.id,
+        )
+
+    except hospital_service.InvalidHospitalLocationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.patch(
@@ -111,9 +160,10 @@ def verify_hospital(
         )
 
     hospital = hospital_service.set_hospital_verification(
-        db,
-        hospital_id,
-        is_verified,
+        db=db,
+        hospital_id=hospital_id,
+        is_verified=is_verified,
+        performed_by_user_id=current_user.id,
     )
 
     if hospital is None:
@@ -142,9 +192,10 @@ def authorize_staff(
         )
 
     staff_link = hospital_service.authorize_hospital_staff(
-        db,
-        hospital_id,
-        user_id,
+        db=db,
+        hospital_id=hospital_id,
+        user_id=user_id,
+        performed_by_user_id=current_user.id,
     )
 
     if staff_link is None:
@@ -173,9 +224,10 @@ def revoke_staff_authorization(
         )
 
     staff_link = hospital_service.revoke_hospital_staff(
-        db,
-        hospital_id,
-        user_id,
+        db=db,
+        hospital_id=hospital_id,
+        user_id=user_id,
+        performed_by_user_id=current_user.id,
     )
 
     if staff_link is None:
