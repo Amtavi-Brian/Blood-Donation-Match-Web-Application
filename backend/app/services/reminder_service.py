@@ -1,5 +1,7 @@
 
+import logging
 from datetime import datetime, timezone
+from html import escape
 
 from sqlalchemy.orm import Session
 
@@ -7,6 +9,10 @@ from app.models.user import User
 from app.models.reminder import Reminder, ReminderStatus
 from app.models.notififcation import Notification
 from app.models.audit_log import AuditLog
+from app.services.email_service import send_email
+
+
+logger = logging.getLogger(__name__)
 
 
 def add_audit_entry(
@@ -168,10 +174,8 @@ def process_due_reminders(
     limit: int = 100,
 ) -> int:
     """
-    Convert due reminders into internal notifications.
-
-    Reminder updates, notifications, and the audit entry
-    are committed together.
+    Convert due reminders into internal notifications
+    and send corresponding email notifications.
     """
 
     now = datetime.now(timezone.utc)
@@ -191,10 +195,16 @@ def process_due_reminders(
         return 0
 
     processed_count = 0
+    email_jobs = []
     first_reminder_id = due_reminders[0].reminder_id
 
     try:
         for reminder in due_reminders:
+
+            user = db.query(User).filter(
+                User.id == reminder.user_id
+            ).first()
+
             notification = Notification(
                 user_id=reminder.user_id,
                 title=reminder.title,
@@ -207,6 +217,15 @@ def process_due_reminders(
 
             reminder.status = ReminderStatus.SENT
             reminder.sent_at = now
+
+            if user and user.is_active and user.email:
+                email_jobs.append(
+                    (
+                        user.email,
+                        reminder.title,
+                        reminder.message,
+                    )
+                )
 
             processed_count += 1
 
@@ -224,8 +243,44 @@ def process_due_reminders(
 
         db.commit()
 
-        return processed_count
-
     except Exception:
         db.rollback()
         raise
+
+    # Send emails only after the database transaction succeeds.
+    for recipient, title, message in email_jobs:
+        try:
+            html_content = f"""
+            <!DOCTYPE html>
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <div style="max-width: 600px; margin: auto; padding: 20px;">
+                    <h2 style="color: #b91c1c;">
+                        Blood Donation Match
+                    </h2>
+                    <h3>{escape(title)}</h3>
+                    <p>{escape(message).replace(chr(10), '<br>')}</p>
+                    <hr>
+                    <p style="font-size: 12px; color: #777;">
+                        This is an automated reminder from
+                        Blood Donation Match.
+                    </p>
+                </div>
+            </body>
+            </html>
+            """
+
+            send_email(
+                recipient=recipient,
+                subject=title,
+                html_content=html_content,
+                text_content=message,
+            )
+
+        except Exception:
+            logger.exception(
+                "Reminder email could not be sent to %s",
+                recipient,
+            )
+
+    return processed_count

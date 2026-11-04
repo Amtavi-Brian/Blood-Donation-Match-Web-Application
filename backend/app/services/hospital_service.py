@@ -217,6 +217,7 @@ def authorize_hospital_staff(
     if (
         user.role != UserRole.HOSPITAL_STAFF
         or not user.is_active
+        or not user.is_email_verified
     ):
         return None
 

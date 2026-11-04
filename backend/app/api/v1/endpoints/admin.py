@@ -7,7 +7,8 @@ from app.db.session import get_db
 from app.models.user import User, UserRole
 from app.schemas.auth import UserResponse
 from app.services import user_service
-
+from app.schemas.hospital import HospitalStaffAccountCreate
+from app.services.otp_service import send_verification_otp
 
 router = APIRouter(prefix="/admin", tags=["Administration"])
 
@@ -23,6 +24,42 @@ def require_admin(current_user: User) -> None:
             detail="Administrator access required.",
         )
 
+@router.post(
+    "/hospital-staff",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_hospital_staff_account(
+    staff_data: HospitalStaffAccountCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    require_admin(current_user)
+
+    staff_user = user_service.create_hospital_staff_user(
+        db=db,
+        user_data=staff_data,
+    )
+
+    if staff_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists.",
+        )
+
+    try:
+        send_verification_otp(db, staff_user)
+
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "The staff account was created, but the verification "
+                "email could not be sent. Use the resend OTP endpoint."
+            ),
+        )
+
+    return staff_user
 
 @router.get("/users", response_model=list[UserResponse])
 def list_registered_users(

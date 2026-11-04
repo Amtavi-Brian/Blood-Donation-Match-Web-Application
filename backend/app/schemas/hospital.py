@@ -2,7 +2,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
-
+from pydantic import EmailStr
 
 class HospitalCreate(BaseModel):
     name: str = Field(min_length=2, max_length=200)
@@ -42,7 +42,11 @@ class HospitalResponse(BaseModel):
 class HospitalStaffCreate(BaseModel):
     hospital_id: int = Field(gt=0)
 
-
+class HospitalStaffAccountCreate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=150)
+    email: EmailStr
+    phone_number: str | None = Field(default=None, max_length=30)
+    password: str = Field(min_length=8, max_length=128)
 class HospitalStaffResponse(BaseModel):
     id: int
     user_id: int

@@ -1,3 +1,4 @@
+
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -14,6 +15,17 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: str = (
         "http://localhost:3000,http://localhost:5173"
     )
+
+    # Gmail SMTP configuration
+    EMAILS_ENABLED: bool = False
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_STARTTLS: bool = True
+
+    EMAILS_FROM_EMAIL: str = ""
+    EMAILS_FROM_NAME: str = "Blood Donation Match"
 
     model_config = SettingsConfigDict(
         env_file=".env",

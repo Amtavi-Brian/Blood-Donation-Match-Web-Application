@@ -94,7 +94,7 @@ def create_request(
     response_model=list[BloodRequestResponse],
 )
 def list_blood_requests(
-    db: Session,
+    db: Session = Depends(get_db),
     status_filter: BloodRequestStatus | None = None,
     hospital_id: int | None = None,
     include_cancelled: bool = False,
@@ -104,6 +104,8 @@ def list_blood_requests(
         return blood_request_service.list_blood_requests(
             db,
             status_filter,
+            hospital_id=hospital_id,
+            include_cancelled=include_cancelled,
         )
 
     if current_user.role == UserRole.HOSPITAL_STAFF:
@@ -120,6 +122,8 @@ def list_blood_requests(
         return blood_request_service.list_blood_requests(
             db,
             status_filter,
+            hospital_id=hospital_id,
+            include_cancelled=include_cancelled,
         )
 
     raise HTTPException(
