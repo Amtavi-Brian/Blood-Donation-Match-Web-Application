@@ -21,6 +21,19 @@ class UserLogin(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class VerifyEmailOTP(BaseModel):
+    email: EmailStr
+    otp: str = Field(
+        min_length=6,
+        max_length=6,
+        pattern=r"^\d{6}$",
+    )
+
+
+class ResendEmailOTP(BaseModel):
+    email: EmailStr
+
+
 class UserResponse(BaseModel):
     id: int
     full_name: str
@@ -28,6 +41,7 @@ class UserResponse(BaseModel):
     phone_number: str | None
     role: str
     is_active: bool
+    is_email_verified: bool
 
     model_config = ConfigDict(from_attributes=True)
 

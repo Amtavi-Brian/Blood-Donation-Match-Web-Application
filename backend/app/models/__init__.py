@@ -15,6 +15,7 @@ from app.models.notififcation import Notification
 #from app.models.report import Report
 from app.models.audit_log import AuditLog
 from app.models.reminder import Reminder, ReminderStatus
+from app.models.email_otp import EmailOTP
 
 __all__ = [
     "User",
@@ -32,5 +33,6 @@ __all__ = [
     "Notification",
     "Reminder",
     "ReminderStatus",
+    "EmailOTP",
     "AuditLog",
 ]

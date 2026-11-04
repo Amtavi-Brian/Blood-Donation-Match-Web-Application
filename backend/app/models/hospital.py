@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app.models.blood_request import BloodRequest
 
-
+from app.models.hospital_user import HospitalUser
 
 class Hospital(Base):
     __tablename__ = "hospitals"

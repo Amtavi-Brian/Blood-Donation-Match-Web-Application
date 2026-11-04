@@ -1,5 +1,7 @@
 
+import logging
 from datetime import datetime, timezone
+from html import escape
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -8,6 +10,10 @@ from app.models.notififcation import Notification
 from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.notification import NotificationCreate
+from app.services.email_service import send_email
+
+
+logger = logging.getLogger(__name__)
 
 
 def add_audit_entry(
@@ -68,6 +74,45 @@ def create_notification(
     except Exception:
         db.rollback()
         raise
+
+    # Send email only after the database transaction succeeds.
+    try:
+        html_content = f"""
+        <!DOCTYPE html>
+        <html>
+        <body style="font-family: Arial, sans-serif; color: #333;">
+            <div style="max-width: 600px; margin: auto; padding: 20px;">
+                <h2 style="color: #b91c1c;">
+                    Blood Donation Match
+                </h2>
+
+                <h3>{escape(notification.title)}</h3>
+
+                <p>{escape(notification.message).replace(chr(10), '<br>')}</p>
+
+                <hr>
+                <p style="font-size: 12px; color: #777;">
+                    This is an automated notification from
+                    Blood Donation Match.
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+
+        send_email(
+            recipient=user.email,
+            subject=notification.title,
+            html_content=html_content,
+            text_content=notification.message,
+        )
+
+    except Exception:
+        # Email failure must not undo the saved notification.
+        logger.exception(
+            "Notification %s was saved, but its email could not be sent.",
+            notification.notification_id,
+        )
 
     return notification
 

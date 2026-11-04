@@ -1,12 +1,17 @@
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
-from app.models.user import User, UserRole
 from app.models.audit_log import AuditLog
-from app.schemas.auth import UserCreate, UserLogin
-from sqlalchemy import func, select
+from app.models.user import User, UserRole
+from app.schemas.auth import UserCreate
+from app.schemas.hospital import HospitalStaffAccountCreate
+
+class EmailNotVerifiedError(Exception):
+    """Raised when a user attempts to log in before email verification."""
+
+
 def create_user(db: Session, user_data: UserCreate) -> User | None:
     """Register a donor and record the registration activity."""
 
@@ -23,6 +28,8 @@ def create_user(db: Session, user_data: UserCreate) -> User | None:
         phone_number=user_data.phone_number,
         hashed_password=hash_password(user_data.password),
         role=UserRole.DONOR,
+        is_active=True,
+        is_email_verified=False,
     )
 
     try:
@@ -47,7 +54,53 @@ def create_user(db: Session, user_data: UserCreate) -> User | None:
 
     return new_user
 
+def create_hospital_staff_user(
+    db: Session,
+    user_data: HospitalStaffAccountCreate,
+) -> User | None:
+    """Create an unverified hospital staff account."""
 
+    existing_user = db.scalar(
+        select(User).where(User.email == str(user_data.email))
+    )
+
+    if existing_user is not None:
+        return None
+
+    new_user = User(
+        full_name=user_data.full_name,
+        email=str(user_data.email),
+        phone_number=user_data.phone_number,
+        hashed_password=hash_password(user_data.password),
+        role=UserRole.HOSPITAL_STAFF,
+        is_active=True,
+        is_email_verified=False,
+    )
+
+    try:
+        db.add(new_user)
+        db.flush()
+
+        audit_log = AuditLog(
+            user_id=new_user.id,
+            action="hospital_staff_account_created",
+            entity_type="user",
+            entity_id=new_user.id,
+            description=(
+                "An administrator-created hospital staff account "
+                "was registered and awaits email verification."
+            ),
+        )
+
+        db.add(audit_log)
+        db.commit()
+        db.refresh(new_user)
+
+        return new_user
+
+    except Exception:
+        db.rollback()
+        raise
 
 def authenticate_user(
     db: Session,
@@ -74,6 +127,11 @@ def authenticate_user(
         user_id = user.id
         description = "Login failed: incorrect password."
 
+    elif not user.is_email_verified:
+        action = "login_blocked_unverified_email"
+        user_id = user.id
+        description = "Login was blocked because the email address is not verified."
+
     else:
         action = "login_successful"
         user_id = user.id
@@ -97,11 +155,15 @@ def authenticate_user(
         db.rollback()
         raise
 
+    if action == "login_blocked_unverified_email":
+        raise EmailNotVerifiedError(
+            "Please verify your email address before logging in."
+        )
+
     if action != "login_successful":
         return None
 
     return user
-
 
 
 def list_users(
@@ -109,18 +171,21 @@ def list_users(
     skip: int = 0,
     limit: int = 50,
 ) -> list[User]:
-    """Return registered users, excluding password hashes from API responses."""
+    """Return registered users."""
+
     statement = (
         select(User)
         .order_by(User.id)
         .offset(skip)
         .limit(limit)
     )
+
     return list(db.scalars(statement).all())
 
 
 def get_user_by_id(db: Session, user_id: int) -> User | None:
     """Find a user by their ID."""
+
     return db.get(User, user_id)
 
 
@@ -140,7 +205,6 @@ def set_user_active_status(
     if user.is_active == is_active:
         return user
 
-    # Prevent deactivation of the last active administrator.
     if user.role == UserRole.ADMIN and not is_active:
         active_admins = db.scalar(
             select(func.count(User.id)).where(
@@ -157,7 +221,11 @@ def set_user_active_status(
     try:
         user.is_active = is_active
 
-        action = "user_account_activated" if is_active else "user_account_deactivated"
+        action = (
+            "user_account_activated"
+            if is_active
+            else "user_account_deactivated"
+        )
 
         audit_log = AuditLog(
             user_id=performed_by_user_id,
