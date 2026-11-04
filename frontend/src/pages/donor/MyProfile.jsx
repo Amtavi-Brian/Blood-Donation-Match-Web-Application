@@ -1,0 +1,360 @@
+
+import { useState } from 'react';
+
+function MyProfile() {
+  const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const [profile, setProfile] = useState({
+    fullName: 'Lisa Ngacha',
+    email: 'lisa@example.com',
+    phone: '+254 712 345 678',
+    bloodGroup: 'O+',
+    location: 'Nairobi, Kenya',
+    gender: 'Female',
+    dateOfBirth: '2003-05-15',
+    availability: 'Available',
+    verified: 'Verified',
+  });
+
+  const handleChange = (e) => {
+    setProfile({
+      ...profile,
+      [e.target.name]: e.target.value,
+    });
+    setSaved(false);
+  };
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    setEditing(false);
+    setSaved(true);
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '12px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: '13px',
+    boxSizing: 'border-box',
+    background: editing ? '#ffffff' : '#f9fafb',
+    color: '#172033',
+    outlineColor: '#b91c1c',
+  };
+
+  const labelStyle = {
+    display: 'block',
+    fontSize: '12px',
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: '8px',
+  };
+
+  const fieldStyle = {
+    marginBottom: '22px',
+  };
+
+  const cardStyle = {
+    background: '#ffffff',
+    border: '1px solid #eceef2',
+    borderRadius: '14px',
+    padding: '25px',
+    boxShadow: '0 3px 12px rgba(31,41,55,0.04)',
+    marginBottom: '22px',
+  };
+
+  const field = (label, name, type = 'text') => (
+    <div style={fieldStyle}>
+      <label style={labelStyle}>{label}</label>
+      <input
+        type={type}
+        name={name}
+        value={profile[name]}
+        onChange={handleChange}
+        disabled={!editing}
+        style={inputStyle}
+        required
+      />
+    </div>
+  );
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#f8f9fc',
+      padding: '30px',
+      color: '#172033',
+      fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
+    }}>
+
+      {/* PAGE HEADER */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '28px',
+        flexWrap: 'wrap',
+        gap: '15px',
+      }}>
+        <div>
+          <p style={{
+            color: '#b91c1c',
+            fontSize: '11px',
+            fontWeight: '700',
+            letterSpacing: '1px',
+          }}>
+            DONOR PORTAL / MY PROFILE
+          </p>
+          <h1 style={{ fontSize: '28px', margin: '8px 0' }}>
+            My Profile
+          </h1>
+          <p style={{ color: '#6b7280', fontSize: '13px' }}>
+            Manage your personal information and donor details.
+          </p>
+        </div>
+
+        <button
+          onClick={() => {
+            if (editing) {
+              setEditing(false);
+            } else {
+              setEditing(true);
+            }
+          }}
+          style={{
+            background: editing ? '#374151' : '#b91c1c',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '12px 20px',
+            cursor: 'pointer',
+            fontWeight: '600',
+          }}
+        >
+          {editing ? 'Cancel Editing' : '✎ Edit Profile'}
+        </button>
+      </div>
+
+      {/* PROFILE SUMMARY */}
+      <div style={{
+        ...cardStyle,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+        flexWrap: 'wrap',
+      }}>
+        <div style={{
+          width: '75px',
+          height: '75px',
+          borderRadius: '50%',
+          background: '#fee2e2',
+          color: '#991b1b',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: '25px',
+          fontWeight: '700',
+        }}>
+          {profile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+        </div>
+
+        <div style={{ flex: 1 }}>
+          <h2 style={{ margin: '0 0 6px', fontSize: '21px' }}>
+            {profile.fullName}
+          </h2>
+          <p style={{ color: '#6b7280', fontSize: '13px' }}>
+            {profile.email}
+          </p>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+            <span style={{
+              background: '#dcfce7',
+              color: '#15803d',
+              padding: '5px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '600',
+            }}>
+              ✓ {profile.verified}
+            </span>
+
+            <span style={{
+              background: '#fee2e2',
+              color: '#991b1b',
+              padding: '5px 10px',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontWeight: '600',
+            }}>
+              🩸 {profile.bloodGroup}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* SUCCESS MESSAGE */}
+      {saved && (
+        <div style={{
+          background: '#dcfce7',
+          color: '#166534',
+          padding: '13px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          fontSize: '13px',
+        }}>
+          ✓ Your profile changes have been saved successfully!
+        </div>
+      )}
+
+      {/* PROFILE FORM */}
+      <form onSubmit={handleSave}>
+
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '17px', marginBottom: '8px' }}>
+            Personal Information
+          </h2>
+          <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '25px' }}>
+            Your basic personal details.
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '0 25px',
+          }}>
+            {field('Full Name', 'fullName')}
+            {field('Email Address', 'email', 'email')}
+            {field('Phone Number', 'phone', 'tel')}
+            {field('Date of Birth', 'dateOfBirth', 'date')}
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Gender</label>
+              <select
+                name="gender"
+                value={profile.gender}
+                onChange={handleChange}
+                disabled={!editing}
+                style={inputStyle}
+              >
+                <option>Female</option>
+                <option>Male</option>
+                <option>Other</option>
+                <option>Prefer not to say</option>
+              </select>
+            </div>
+
+            {field('Location', 'location')}
+          </div>
+        </div>
+
+        {/* DONOR INFORMATION */}
+        <div style={cardStyle}>
+          <h2 style={{ fontSize: '17px', marginBottom: '8px' }}>
+            Donor Information
+          </h2>
+          <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '25px' }}>
+            Your blood donation information.
+          </p>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '0 25px',
+          }}>
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Blood Group</label>
+              <select
+                name="bloodGroup"
+                value={profile.bloodGroup}
+                onChange={handleChange}
+                disabled={!editing}
+                style={inputStyle}
+              >
+                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(group => (
+                  <option key={group}>{group}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={fieldStyle}>
+              <label style={labelStyle}>Donor Availability</label>
+              <select
+                name="availability"
+                value={profile.availability}
+                onChange={handleChange}
+                disabled={!editing}
+                style={inputStyle}
+              >
+                <option>Available</option>
+                <option>Unavailable</option>
+              </select>
+            </div>
+          </div>
+
+          <div style={{
+            padding: '15px',
+            background: '#fff7ed',
+            borderRadius: '9px',
+            color: '#9a3412',
+            fontSize: '12px',
+          }}>
+            🩸 Your blood group is important for accurate donor matching.
+            Please ensure that your information is correct.
+          </div>
+        </div>
+
+        {/* SAVE BUTTON */}
+        {editing && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            marginBottom: '25px',
+          }}>
+            <button
+              type="button"
+              onClick={() => setEditing(false)}
+              style={{
+                padding: '12px 20px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                background: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              style={{
+                padding: '12px 25px',
+                border: 'none',
+                borderRadius: '8px',
+                background: '#b91c1c',
+                color: 'white',
+                fontWeight: '600',
+                cursor: 'pointer',
+              }}
+            >
+              Save Changes
+            </button>
+          </div>
+        )}
+
+      </form>
+
+      <p style={{
+        textAlign: 'center',
+        color: '#9ca3af',
+        fontSize: '11px',
+        marginTop: '30px',
+      }}>
+        © 2026 BloodLink. Saving Lives Together ❤️
+      </p>
+
+    </div>
+  );
+}
+
+export default MyProfile;
