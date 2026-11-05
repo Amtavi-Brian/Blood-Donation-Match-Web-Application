@@ -8,6 +8,7 @@ import DonationHistory from './donor/DonationHistory';
 import SosAlerts from './donor/SosAlerts';
 import Reminders from './donor/Reminders';
 import DonorSettings from './donor/DonorSettings';
+import ReportsAnalytics from './donor/ReportsAnalytics';
 
 
 function DonorDashboard() {
@@ -31,6 +32,7 @@ function DonorDashboard() {
     { name: 'SOS Alerts', icon: '⚠' },
     { name: 'Reminders', icon: '◷' },
     { name: 'Settings', icon: '⚙' },
+    { name: 'Reports & Analytics', icon: '▥' },
   ];
 
   const donations = [
@@ -51,7 +53,8 @@ function DonorDashboard() {
     'SOS Alerts': <SosAlerts />,
     'Reminders': <Reminders />,
     'Settings': <DonorSettings />,
-
+    'Reports & Analytics': <ReportsAnalytics />,
+  
   };
 
   return (
