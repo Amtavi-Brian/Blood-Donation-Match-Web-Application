@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import './DonorDashboard.css';
 
 import MyProfile from './donor/MyProfile';
@@ -12,7 +12,25 @@ import ReportsAnalytics from './donor/ReportsAnalytics';
 
 
 function DonorDashboard() {
-  const [activePage, setActivePage] = useState('Dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const pagePaths = {
+    Dashboard: '/donor',
+    'My Profile': '/donor/profile',
+    'Update Availability': '/donor/availability',
+    'Donation History': '/donor/history',
+    'SOS Alerts': '/donor/sos-alerts',
+    Reminders: '/donor/reminders',
+    Settings: '/donor/settings',
+    'Reports & Analytics': '/donor/analytics',
+    Notifications: '/notifications',
+  };
+  const pathPages = Object.fromEntries(
+    Object.entries(pagePaths).map(([page, path]) => [path, page]),
+  );
+  const currentPath = location.pathname.replace(/\/+$/, '') || '/donor';
+  const activePage = pathPages[currentPath] || 'Dashboard';
 
   // Temporary demo data until backend integration
   const donor = {
@@ -42,7 +60,7 @@ function DonorDashboard() {
   ];
 
   const handleNavigation = (page) => {
-    setActivePage(page);
+    navigate(pagePaths[page] || '/donor');
   };
 
   // Connect the pages we have already created
@@ -294,7 +312,7 @@ function DonorDashboard() {
           <>
             <button
               className="view-btn"
-              onClick={() => setActivePage('Dashboard')}
+              onClick={() => handleNavigation('Dashboard')}
               style={{ marginBottom: '20px' }}
             >
               ← Back to Dashboard
@@ -310,7 +328,7 @@ function DonorDashboard() {
             <section className="dashboard-card">
               <button
                 className="view-btn"
-                onClick={() => setActivePage('Dashboard')}
+                onClick={() => handleNavigation('Dashboard')}
               >
                 ← Back to Dashboard
               </button>

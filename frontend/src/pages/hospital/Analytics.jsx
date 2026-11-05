@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-
 import { useEffect, useMemo, useState } from 'react'
 import MetricCard from '../../componenets/dashboard/MetricCard'
 import DataTable from '../../componenets/ui/DataTable'
@@ -454,5 +452,3 @@ function AnalyticsDashboard() {
 }
 
 export default AnalyticsDashboard
-=======
->>>>>>> 1f785f69ff7f0d915f620a188fef7e653c811bf4
