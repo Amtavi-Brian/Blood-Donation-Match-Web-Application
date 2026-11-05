@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: str = ""
     EMAILS_FROM_NAME: str = "Blood Donation Match"
 
+        # Africa's Talking SMS configuration
+    SMS_ENABLED: bool = False
+    AT_USERNAME: str = "sandbox"
+    AT_API_KEY: str = ""
+    AT_SENDER_ID: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
