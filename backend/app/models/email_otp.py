@@ -25,6 +25,14 @@ class EmailOTP(Base):
         index=True,
     )
 
+    # Distinguishes email verification from password reset.
+    purpose: Mapped[str] = mapped_column(
+        String(30),
+        default="email_verification",
+        server_default="email_verification",
+        nullable=False,
+    )
+
     otp_hash: Mapped[str] = mapped_column(
         String(255),
         nullable=False,

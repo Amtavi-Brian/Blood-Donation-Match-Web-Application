@@ -12,7 +12,7 @@ class HospitalCreate(BaseModel):
     contact_phone: str = Field(min_length=7, max_length=30)
     latitude: float | None = Field(default=None, ge=-90, le=90)
     longitude: float | None = Field(default=None, ge=-180, le=180)
-    consent_to_share_location: bool = False
+
 
 
 class HospitalUpdate(BaseModel):

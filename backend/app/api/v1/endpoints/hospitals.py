@@ -12,13 +12,102 @@ from app.schemas.hospital import (
     HospitalStaffCreate,
 )
 from app.services import hospital_service
-
+from app.schemas.location import (
+    HospitalMapLocation,
+    DonorMapLocation,
+)
+from app.services import location_service
 
 router = APIRouter(
     prefix="/hospitals",
     tags=["Hospitals"],
 )
 
+@router.get(
+    "/map",
+    response_model=list[HospitalMapLocation],
+)
+def get_verified_hospitals_map(
+    city: str | None = Query(default=None, max_length=100),
+    db: Session = Depends(get_db),
+):
+    """
+    Public map locations for verified hospitals only.
+    """
+    return location_service.list_verified_hospital_locations(
+        db=db,
+        city=city,
+    )
+
+
+@router.get(
+    "/{hospital_id}/donors/map",
+    response_model=list[DonorMapLocation],
+)
+def get_hospital_donor_map(
+    hospital_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Approximate locations of donors who consented to location sharing.
+    Only authorized staff of this hospital can access this endpoint.
+    """
+    if current_user.role != UserRole.HOSPITAL_STAFF:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only hospital staff can access donor map locations.",
+        )
+
+    if not current_user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email verification is required.",
+        )
+
+    authorized = location_service.staff_can_view_hospital_donors(
+        db=db,
+        hospital_id=hospital_id,
+        staff_user_id=current_user.id,
+    )
+
+    if not authorized:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to access this hospital's donor map.",
+        )
+
+    try:
+        donors = location_service.list_consented_donor_locations(
+            db=db,
+            hospital_id=hospital_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+
+    locations = []
+
+    for donor in donors:
+        latitude, longitude = (
+            location_service.approximate_donor_location(
+                donor.latitude,
+                donor.longitude,
+            )
+        )
+
+        locations.append(
+            DonorMapLocation(
+                blood_group=donor.blood_group,
+                city=donor.city,
+                latitude=latitude,
+                longitude=longitude,
+            )
+        )
+
+    return locations
 
 @router.post(
     "/",

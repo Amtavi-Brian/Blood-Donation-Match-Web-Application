@@ -1,4 +1,6 @@
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,7 +9,9 @@ from app.api.deps import get_db
 from app.core.security import create_access_token
 from app.models.user import User
 from app.schemas.auth import (
+    ForgotPasswordRequest,
     ResendEmailOTP,
+    ResetPasswordRequest,
     Token,
     UserCreate,
     UserLogin,
@@ -21,10 +25,14 @@ from app.services.otp_service import (
     OTPExpiredError,
     OTPInvalidError,
     OTPResendCooldownError,
+    reset_password_with_otp,
+    send_password_reset_otp,
     send_verification_otp,
     verify_email_otp,
 )
 from app.services.user_service import EmailNotVerifiedError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -49,6 +57,7 @@ def register(
     try:
         send_verification_otp(db, new_user)
     except Exception:
+        logger.exception("Verification email delivery failed.")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
@@ -88,19 +97,7 @@ def verify_email(
             detail=str(exc),
         )
 
-    except OTPExpiredError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        )
-
-    except OTPInvalidError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(exc),
-        )
-
-    except OTPError as exc:
+    except (OTPExpiredError, OTPInvalidError, OTPError) as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(exc),
@@ -120,7 +117,6 @@ def resend_otp(
         select(User).where(User.email == str(request_data.email))
     )
 
-    # Use a generic response for unknown or already-verified accounts.
     if user is None or user.is_email_verified:
         return {
             "message": (
@@ -138,13 +134,8 @@ def resend_otp(
             detail=str(exc),
         )
 
-    except OTPError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Unable to send the verification email. Please try again.",
-        )
-
     except Exception:
+        logger.exception("Verification OTP delivery failed.")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Unable to send the verification email. Please try again.",
@@ -154,6 +145,78 @@ def resend_otp(
         "message": (
             "If an eligible unverified account exists, "
             "a verification email will be sent."
+        )
+    }
+
+
+@router.post("/forgot-password", status_code=status.HTTP_202_ACCEPTED)
+def forgot_password(
+    request_data: ForgotPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    user = db.scalar(
+        select(User).where(User.email == str(request_data.email))
+    )
+
+    # Do not reveal whether an account exists or is eligible.
+    if user is not None and user.is_active and user.is_email_verified:
+        try:
+            send_password_reset_otp(db, user)
+
+        except OTPResendCooldownError:
+            # Keep the response identical during the resend cooldown.
+            pass
+
+        except Exception:
+            logger.exception("Password reset OTP delivery failed.")
+
+    return {
+        "message": (
+            "If an eligible account exists, a password reset code "
+            "will be sent to the registered email address."
+        )
+    }
+
+
+@router.post("/reset-password")
+def reset_password(
+    reset_data: ResetPasswordRequest,
+    db: Session = Depends(get_db),
+):
+    user = db.scalar(
+        select(User).where(User.email == str(reset_data.email))
+    )
+
+    if user is None or not user.is_active or not user.is_email_verified:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset code.",
+        )
+
+    try:
+        reset_password_with_otp(
+            db=db,
+            user=user,
+            submitted_otp=reset_data.otp,
+            new_password=reset_data.new_password,
+        )
+
+    except OTPAttemptsExceededError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=str(exc),
+        )
+
+    except (OTPExpiredError, OTPInvalidError, OTPError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired password reset code.",
+        )
+
+    return {
+        "message": (
+            "Your password has been reset successfully. "
+            "You can now log in using your new password."
         )
     }
 

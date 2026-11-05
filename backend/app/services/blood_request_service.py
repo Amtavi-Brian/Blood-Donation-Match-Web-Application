@@ -22,6 +22,7 @@ from app.schemas.blood_request import (
 from app.schemas.notification import NotificationCreate
 from app.services.matching_service import find_potential_donors
 from app.services.notification_service import create_notification
+from app.services.sms_service import send_sms
 
 logger = logging.getLogger(__name__)
 
@@ -146,6 +147,7 @@ def notify_donors_about_emergency(
             if existing_notification:
                 continue
 
+                       # Create the in-app notification and send the email.
             create_notification(
                 db=db,
                 data=NotificationCreate(
@@ -159,6 +161,31 @@ def notify_donors_about_emergency(
 
             notifications_created += 1
 
+            # Send SMS only when the donor has provided a phone number.
+            # Contact consent and availability were checked above.
+            if donor_user.phone_number:
+                sms_message = (
+                    f"URGENT BLOOD REQUEST: {hospital.name}, "
+                    f"{hospital.city}, needs {blood_request.units_needed} "
+                    f"unit(s) of {blood_request.blood_group.value}. "
+                    f"Contact: {hospital.contact_phone}. "
+                    "Final eligibility must be confirmed by hospital staff."
+                )
+
+                try:
+                    send_sms(
+                        recipient=donor_user.phone_number,
+                        message=sms_message,
+                    )
+
+                except Exception:
+                    logger.exception(
+                        "SMS failed for donor profile %s "
+                        "on blood request %s. In-app notification "
+                        "and email were already processed.",
+                        donor.donor_profile_id,
+                        blood_request.id,
+                    )
         except Exception:
             logger.exception(
                 "Failed to notify donor profile %s about blood request %s.",
