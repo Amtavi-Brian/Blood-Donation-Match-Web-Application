@@ -1,59 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "../../componenets/ui/Card";
 import StatusBadge from "../../componenets/ui/StatusBadge";
-
-const initialHospitals = [
-  {
-    id: 1,
-    name: "Nairobi West Hospital",
-    county: "Nairobi",
-    license: "KMPDC-10234",
-    contact: "admin@nairobiwest.co.ke",
-    submitted: "02 Nov 2026",
-    status: "pending",
-  },
-  {
-    id: 2,
-    name: "Mbagathi Hospital",
-    county: "Nairobi",
-    license: "KMPDC-20871",
-    contact: "records@mbagathi.go.ke",
-    submitted: "01 Nov 2026",
-    status: "pending",
-  },
-  {
-    id: 3,
-    name: "Coast General Hospital",
-    county: "Mombasa",
-    license: "KMPDC-30455",
-    contact: "info@coastgeneral.go.ke",
-    submitted: "30 Oct 2026",
-    status: "pending",
-  },
-  {
-    id: 4,
-    name: "Kenyatta National Hospital",
-    county: "Nairobi",
-    license: "KMPDC-00012",
-    contact: "bloodbank@knh.or.ke",
-    submitted: "24 Oct 2026",
-    status: "approved",
-  },
-  {
-    id: 5,
-    name: "Sunrise Clinic",
-    county: "Kiambu",
-    license: "KMPDC-99001",
-    contact: "sunrise@mail.com",
-    submitted: "20 Oct 2026",
-    status: "rejected",
-  },
-];
+import { getHospitals, setHospitalVerification } from "../../services/hospitalService";
 
 const tabs = [
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
-  { key: "rejected", label: "Rejected" },
 ];
 
 const badgeFor = {
@@ -84,19 +36,39 @@ const css = `
 `;
 
 export default function VerifyHospitals() {
-  const [hospitals, setHospitals] = useState(initialHospitals);
+  const [hospitals, setHospitals] = useState([]);
   const [tab, setTab] = useState("pending");
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  const decide = (hospital, status) => {
-    setHospitals((list) =>
-      list.map((h) => (h.id === hospital.id ? { ...h, status } : h)),
-    );
-    setNotice(`${hospital.name} ${status}. Action recorded in the audit log.`);
+  useEffect(() => {
+    let active = true;
+    getHospitals({ verifiedOnly: false })
+      .then((items) => { if (active) setHospitals(items); })
+      .catch((loadError) => { if (active) setError(loadError.message || "Unable to load hospital registrations."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const decide = async (hospital, isVerified) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const updated = await setHospitalVerification(hospital.id, isVerified);
+      setHospitals((list) => list.map((item) => item.id === updated.id ? updated : item));
+      setNotice(`${updated.name} ${isVerified ? "approved" : "approval revoked"}.`);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to update hospital verification.");
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const visible = hospitals.filter((h) => h.status === tab);
-  const count = (key) => hospitals.filter((h) => h.status === key).length;
+  const visible = hospitals.filter((hospital) => hospital.is_verified === (tab === "approved"));
+  const count = (key) => hospitals.filter((hospital) => hospital.is_verified === (key === "approved")).length;
 
   return (
     <div className="vh-root">
@@ -123,52 +95,49 @@ export default function VerifyHospitals() {
       </div>
 
       {notice && <div className="vh-notice">{notice}</div>}
+      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
 
       <Card
         title="Hospital Registrations"
         subtitle={`${visible.length} ${tab}`}
       >
-        {visible.length === 0 ? (
+        {loading ? (
+          <div className="vh-empty">Loading hospital registrations…</div>
+        ) : visible.length === 0 ? (
           <div className="vh-empty">No {tab} hospitals.</div>
         ) : (
           <div className="vh-list">
-            {visible.map((h) => (
+            {visible.map((h) => {
+              const status = h.is_verified ? "approved" : "pending";
+              return (
               <div className="vh-row" key={h.id}>
                 <div className="vh-info">
                   <div className="vh-name">{h.name}</div>
                   <div className="vh-meta">
-                    <span>{h.county}</span>
-                    <span>Licence: {h.license}</span>
-                    <span>{h.contact}</span>
-                    <span>Submitted {h.submitted}</span>
+                    <span>{h.city}</span>
+                    <span>Registration: {h.registration_number}</span>
+                    <span>{h.contact_phone}</span>
+                    <span>Submitted {new Date(h.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
                 <div className="vh-actions">
                   <StatusBadge
-                    status={badgeFor[h.status].status}
-                    label={badgeFor[h.status].label}
+                    status={badgeFor[status].status}
+                    label={badgeFor[status].label}
                   />
-                  {h.status === "pending" && (
-                    <>
+                  {!h.is_verified && (
                       <button
                         type="button"
                         className="vh-btn vh-approve"
-                        onClick={() => decide(h, "approved")}
+                        disabled={busy}
+                        onClick={() => decide(h, true)}
                       >
                         Approve
                       </button>
-                      <button
-                        type="button"
-                        className="vh-btn vh-reject"
-                        onClick={() => decide(h, "rejected")}
-                      >
-                        Reject
-                      </button>
-                    </>
                   )}
                 </div>
               </div>
-            ))}
+            );})}
           </div>
         )}
       </Card>

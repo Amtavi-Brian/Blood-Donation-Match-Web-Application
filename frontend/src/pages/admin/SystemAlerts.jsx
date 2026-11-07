@@ -1,62 +1,8 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Card from "../../componenets/ui/Card";
-import StatusBadge from "../../componenets/ui/StatusBadge";
+import { getAuditLogs } from "../../services/adminService";
 
-const initialAlerts = [
-  {
-    id: 1,
-    type: "SOS",
-    severity: "high",
-    title: "SOS alert: O+ needed urgently",
-    detail: "Kenyatta National Hospital, Nairobi",
-    time: "1 hour ago",
-    status: "active",
-  },
-  {
-    id: 2,
-    type: "Security",
-    severity: "high",
-    title: "Repeated failed admin logins",
-    detail: "5 attempts from one device",
-    time: "3 hours ago",
-    status: "active",
-  },
-  {
-    id: 3,
-    type: "Stock",
-    severity: "medium",
-    title: "Low stock warning: O-",
-    detail: "Critically low in Nairobi",
-    time: "1 day ago",
-    status: "active",
-  },
-  {
-    id: 4,
-    type: "Notification",
-    severity: "medium",
-    title: "SMS delivery failed",
-    detail: "12 reminders failed to deliver",
-    time: "1 day ago",
-    status: "active",
-  },
-  {
-    id: 5,
-    type: "Account",
-    severity: "low",
-    title: "User reported",
-    detail: "Report on account fake77@mailinator.com",
-    time: "2 days ago",
-    status: "resolved",
-  },
-];
-
-const filters = ["All", "Active", "Resolved"];
-
-const severityBadge = {
-  high: { status: "cancelled", label: "High" },
-  medium: { status: "pending", label: "Medium" },
-  low: { status: "fulfilled", label: "Low" },
-};
+const filters = ["All", "Security", "Requests", "Hospitals", "Accounts"];
 
 const css = `
 .sa-root{--navy:#0b2142;--red:#d0101e;--text:#1c2430;--muted:#7a8494;--border:#eceff4;--bg:#f6f7fb;--mint:#dff5ec;--mint-t:#2e9e6b;
@@ -83,34 +29,45 @@ const css = `
 `;
 
 export default function SystemAlerts() {
-  const [alerts, setAlerts] = useState(initialAlerts);
+  const [logs, setLogs] = useState([]);
   const [filter, setFilter] = useState("All");
-  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
 
-  const resolve = (a) => {
-    setAlerts((list) =>
-      list.map((x) => (x.id === a.id ? { ...x, status: "resolved" } : x)),
-    );
-    setNotice(
-      `"${a.title}" marked as resolved. Action recorded in the audit log.`,
-    );
-  };
+  useEffect(() => {
+    let active = true;
+    getAuditLogs({ limit: 100 })
+      .then((response) => { if (active) setLogs(response.logs); })
+      .catch((loadError) => { if (active) setError(loadError.message || "Unable to load audit events."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-  const activeCount = alerts.filter((a) => a.status === "active").length;
-  const visible = alerts.filter(
-    (a) => filter === "All" || a.status === filter.toLowerCase(),
-  );
+  const alerts = useMemo(() => logs.map((entry) => {
+    const action = entry.action.toLowerCase();
+    const type = action.includes("login") ? "Security"
+      : action.includes("request") ? "Requests"
+        : action.includes("hospital") ? "Hospitals" : "Accounts";
+    return {
+      id: entry.audit_id,
+      type,
+      title: entry.action.replaceAll("_", " "),
+      detail: entry.description,
+      time: new Date(entry.created_at).toLocaleString(),
+    };
+  }), [logs]);
+  const visible = alerts.filter((alert) => filter === "All" || alert.type === filter);
 
   return (
     <div className="sa-root">
       <style>{css}</style>
 
       <div className="sa-head">
-        <h1>System Alerts</h1>
-        <p>Monitor SOS, security, stock and notification alerts.</p>
+        <h1>Audit Events</h1>
+        <p>Review recent recorded system events from the audit log.</p>
       </div>
 
-      {notice && <div className="sa-notice">{notice}</div>}
+      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
 
       <div className="sa-bar">
         {filters.map((f) => (
@@ -125,14 +82,16 @@ export default function SystemAlerts() {
         ))}
       </div>
 
-      <Card title="Alerts" subtitle={`${activeCount} active`}>
-        {visible.length === 0 ? (
+      <Card title="Recent events" subtitle={`${alerts.length} audit events loaded`}>
+        {loading ? (
+          <div className="sa-empty">Loading audit events…</div>
+        ) : visible.length === 0 ? (
           <div className="sa-empty">No alerts to show.</div>
         ) : (
           <div className="sa-list">
             {visible.map((a) => (
               <div
-                className={`sa-row ${a.severity}${a.status === "resolved" ? " resolved" : ""}`}
+                className="sa-row"
                 key={a.id}
               >
                 <div className="sa-info">
@@ -142,23 +101,6 @@ export default function SystemAlerts() {
                     <span>{a.detail}</span>
                     <span>{a.time}</span>
                   </div>
-                </div>
-                <div className="sa-actions">
-                  <StatusBadge
-                    status={severityBadge[a.severity].status}
-                    label={severityBadge[a.severity].label}
-                  />
-                  {a.status === "active" ? (
-                    <button
-                      type="button"
-                      className="sa-btn"
-                      onClick={() => resolve(a)}
-                    >
-                      Mark resolved
-                    </button>
-                  ) : (
-                    <span className="sa-meta">Resolved</span>
-                  )}
                 </div>
               </div>
             ))}

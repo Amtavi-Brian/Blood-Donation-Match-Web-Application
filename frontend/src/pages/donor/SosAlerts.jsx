@@ -1,66 +1,45 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getBloodRequests } from '../../services/requestService';
+import { getHospitals } from '../../services/hospitalService';
 
 function SosAlerts() {
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-  const [responded, setResponded] = useState([]);
+  const [requests, setRequests] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  // Sample SOS requests - temporary until backend integration
-  const [requests] = useState([
-    {
-      id: 1,
-      patient: 'Emergency Patient #001',
-      bloodGroup: 'O+',
-      hospital: 'Kenyatta National Hospital',
-      location: 'Nairobi',
-      units: 2,
-      urgency: 'Critical',
-      neededBy: 'Today',
-      description: 'Urgent blood needed for an emergency patient.',
-    },
-    {
-      id: 2,
-      patient: 'Emergency Patient #002',
-      bloodGroup: 'A+',
-      hospital: 'Nairobi Hospital',
-      location: 'Nairobi',
-      units: 1,
-      urgency: 'High',
-      neededBy: 'Tomorrow',
-      description: 'Blood required for a scheduled medical procedure.',
-    },
-    {
-      id: 3,
-      patient: 'Emergency Patient #003',
-      bloodGroup: 'O-',
-      hospital: 'Aga Khan University Hospital',
-      location: 'Nairobi',
-      units: 3,
-      urgency: 'Critical',
-      neededBy: 'Today',
-      description: 'Urgent request for a patient requiring blood transfusion.',
-    },
-    {
-      id: 4,
-      patient: 'Emergency Patient #004',
-      bloodGroup: 'B+',
-      hospital: 'MP Shah Hospital',
-      location: 'Nairobi',
-      units: 2,
-      urgency: 'Normal',
-      neededBy: 'Within 3 days',
-      description: 'Blood donation requested for patient treatment.',
-    },
-  ]);
-
-  const handleResponse = (id) => {
-    setResponded((previous) =>
-      previous.includes(id)
-        ? previous.filter((item) => item !== id)
-        : [...previous, id]
-    );
-  };
+  useEffect(() => {
+    let active = true;
+    Promise.all([getBloodRequests({ status: 'pending' }), getHospitals()])
+      .then(([requestList, hospitalList]) => {
+        if (!active) return;
+        const hospitalsById = new Map(hospitalList.map((hospital) => [hospital.id, hospital]));
+        setHospitals(hospitalList);
+        setRequests(requestList.map((request) => {
+          const hospital = hospitalsById.get(request.hospital_id);
+          return {
+            id: request.id,
+            patient: `Blood request #${request.id}`,
+            bloodGroup: request.blood_group,
+            hospital: hospital?.name || 'Hospital',
+            location: hospital?.city || 'Location unavailable',
+            phone: hospital?.contact_phone || '',
+            units: request.units_needed,
+            urgency: request.urgency,
+            neededBy: request.needed_by ? new Date(request.needed_by).toLocaleString() : 'As soon as possible',
+            description: request.notes || 'No additional details were provided.',
+          };
+        }));
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || 'Unable to load current blood requests.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const filteredRequests = requests.filter((request) => {
     const matchesFilter =
@@ -75,7 +54,7 @@ function SosAlerts() {
   });
 
   const criticalCount = requests.filter(
-    (request) => request.urgency === 'Critical'
+    (request) => request.urgency === 'emergency'
   ).length;
 
   const styles = {
@@ -179,9 +158,9 @@ function SosAlerts() {
         </div>
 
         <div style={styles.statCard}>
-          <div>Your Responses</div>
-          <div style={styles.statNumber}>{responded.length}</div>
-          <small style={{ color: '#6b7280' }}>Requests you've responded to</small>
+          <div>Hospitals listed</div>
+          <div style={styles.statNumber}>{hospitals.length}</div>
+          <small style={{ color: '#6b7280' }}>Verified hospitals</small>
         </div>
       </div>
 
@@ -201,9 +180,9 @@ function SosAlerts() {
           onChange={(e) => setFilter(e.target.value)}
         >
           <option value="All">All Urgency Levels</option>
-          <option value="Critical">Critical</option>
-          <option value="High">High</option>
-          <option value="Normal">Normal</option>
+          <option value="emergency">Emergency</option>
+          <option value="urgent">Urgent</option>
+          <option value="routine">Routine</option>
         </select>
       </div>
 
@@ -211,8 +190,10 @@ function SosAlerts() {
       <h2 style={{ fontSize: '20px', marginBottom: '18px' }}>
         Available Blood Requests
       </h2>
+      {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
+      {loading && <p role="status">Loading current blood requests…</p>}
 
-      {filteredRequests.length > 0 ? (
+      {!loading && filteredRequests.length > 0 ? (
         filteredRequests.map((request) => (
           <div key={request.id} style={styles.alertCard}>
 
@@ -239,15 +220,15 @@ function SosAlerts() {
                 fontWeight: '700',
                 height: 'fit-content',
                 background:
-                  request.urgency === 'Critical'
+                  request.urgency === 'emergency'
                     ? '#fee2e2'
-                    : request.urgency === 'High'
+                    : request.urgency === 'urgent'
                       ? '#ffedd5'
                       : '#dcfce7',
                 color:
-                  request.urgency === 'Critical'
+                  request.urgency === 'emergency'
                     ? '#b91c1c'
-                    : request.urgency === 'High'
+                    : request.urgency === 'urgent'
                       ? '#c2410c'
                       : '#166534',
               }}>
@@ -300,23 +281,15 @@ function SosAlerts() {
               ⏰ Needed: {request.neededBy}
             </p>
 
-            <button
-              style={{
-                ...styles.button,
-                background: responded.includes(request.id)
-                  ? '#166534'
-                  : '#991b1b',
-              }}
-              onClick={() => handleResponse(request.id)}
-            >
-              {responded.includes(request.id)
-                ? '✓ Interest Recorded'
-                : 'I Can Donate'}
-            </button>
+            {request.phone && (
+              <a style={styles.button} href={`tel:${request.phone}`}>
+                Contact {request.hospital}
+              </a>
+            )}
 
           </div>
         ))
-      ) : (
+      ) : !loading && (
         <div style={{
           background: 'white',
           padding: '35px',

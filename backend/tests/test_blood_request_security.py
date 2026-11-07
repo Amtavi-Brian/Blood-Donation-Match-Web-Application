@@ -205,3 +205,15 @@ def test_staff_cannot_modify_another_hospitals_request(test_environment):
     )
 
     assert response.status_code == 403
+
+
+def test_hospital_staff_can_only_list_authorized_hospitals(test_environment):
+    client, _, ids, login_as = test_environment
+    app.dependency_overrides[get_current_user] = login_as(ids["staff_a"])
+
+    response = client.get("/api/v1/hospitals/me")
+
+    assert response.status_code == 200, response.text
+    assert [hospital["id"] for hospital in response.json()] == [
+        ids["hospital_a"]
+    ]

@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.db.session import get_db
+from app.models.hospital import Hospital
+from app.models.hospital_user import HospitalUser
 from app.models.user import User, UserRole
 from app.schemas.hospital import (
     HospitalCreate,
@@ -22,6 +24,33 @@ router = APIRouter(
     prefix="/hospitals",
     tags=["Hospitals"],
 )
+
+@router.get(
+    "/me",
+    response_model=list[HospitalResponse],
+)
+def get_my_hospitals(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != UserRole.HOSPITAL_STAFF:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only hospital staff can list their hospital associations.",
+        )
+
+    return (
+        db.query(Hospital)
+        .join(HospitalUser, HospitalUser.hospital_id == Hospital.id)
+        .filter(
+            HospitalUser.user_id == current_user.id,
+            HospitalUser.is_authorized.is_(True),
+            Hospital.is_verified.is_(True),
+        )
+        .order_by(Hospital.name)
+        .all()
+    )
+
 
 @router.get(
     "/map",

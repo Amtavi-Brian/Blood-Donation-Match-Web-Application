@@ -1,63 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "../../componenets/ui/Card";
 import StatusBadge from "../../componenets/ui/StatusBadge";
-
-const initialUsers = [
-  {
-    id: 1,
-    name: "Lisa Ngacha",
-    email: "lisa.ngacha@example.com",
-    role: "Donor",
-    county: "Nairobi",
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Peter Otieno",
-    email: "peter.otieno@example.com",
-    role: "Donor",
-    county: "Kisumu",
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "Amina Yusuf",
-    email: "amina.yusuf@example.com",
-    role: "Donor",
-    county: "Mombasa",
-    status: "suspended",
-  },
-  {
-    id: 4,
-    name: "Kenyatta Hospital Staff",
-    email: "bloodbank@knh.or.ke",
-    role: "Hospital",
-    county: "Nairobi",
-    status: "active",
-  },
-  {
-    id: 5,
-    name: "Aga Khan Lab",
-    email: "lab@akuh.org",
-    role: "Hospital",
-    county: "Nairobi",
-    status: "active",
-  },
-  {
-    id: 6,
-    name: "Test Account 77",
-    email: "fake77@mailinator.com",
-    role: "Donor",
-    county: "Nairobi",
-    status: "active",
-  },
-];
+import { getUsers, updateUserActivation } from "../../services/adminService";
 
 const filters = ["All", "Donor", "Hospital"];
 
 const badgeFor = {
   active: { status: "fulfilled", label: "Active" },
-  suspended: { status: "cancelled", label: "Suspended" },
+  inactive: { status: "cancelled", label: "Inactive" },
 };
 
 const css = `
@@ -87,34 +37,46 @@ const css = `
 `;
 
 export default function ManageUsers() {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState([]);
   const [filter, setFilter] = useState("All");
   const [query, setQuery] = useState("");
-  const [confirmId, setConfirmId] = useState(null);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  const toggleStatus = (u) => {
-    const next = u.status === "active" ? "suspended" : "active";
-    setUsers((list) =>
-      list.map((x) => (x.id === u.id ? { ...x, status: next } : x)),
-    );
-    setNotice(
-      `${u.name} ${next === "active" ? "reactivated" : "suspended"}. Action recorded in the audit log.`,
-    );
-  };
+  useEffect(() => {
+    let active = true;
+    getUsers()
+      .then((result) => { if (active) setUsers(result); })
+      .catch((loadError) => { if (active) setError(loadError.message || "Unable to load users."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-  const remove = (u) => {
-    setUsers((list) => list.filter((x) => x.id !== u.id));
-    setConfirmId(null);
-    setNotice(`${u.name} removed. Action recorded in the audit log.`);
+  const toggleStatus = async (user) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const updated = await updateUserActivation(user.id, !user.is_active);
+      setUsers((list) => list.map((item) => item.id === updated.id ? updated : item));
+      setNotice(`${updated.full_name} is now ${updated.is_active ? "active" : "inactive"}.`);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to update this account.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const q = query.trim().toLowerCase();
   const visible = users.filter(
     (u) =>
-      (filter === "All" || u.role === filter) &&
+      (filter === "All" ||
+        (filter === "Donor" && u.role === "donor") ||
+        (filter === "Hospital" && u.role === "hospital_staff")) &&
       (!q ||
-        u.name.toLowerCase().includes(q) ||
+        u.full_name.toLowerCase().includes(q) ||
         u.email.toLowerCase().includes(q)),
   );
 
@@ -125,11 +87,12 @@ export default function ManageUsers() {
       <div className="mu-head">
         <h1>Manage Users</h1>
         <p>
-          Suspend or remove accounts, including fake or duplicate registrations.
+          Review registered users and activate or deactivate accounts.
         </p>
       </div>
 
       {notice && <div className="mu-notice">{notice}</div>}
+      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
 
       <div className="mu-bar">
         {filters.map((f) => (
@@ -161,13 +124,16 @@ export default function ManageUsers() {
               <tr>
                 <th>User</th>
                 <th>Role</th>
-                <th>County</th>
+                <th>Email verification</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {visible.length === 0 && (
+              {loading && (
+                <tr><td colSpan={5} className="mu-empty">Loading users…</td></tr>
+              )}
+              {!loading && visible.length === 0 && (
                 <tr>
                   <td colSpan={5} className="mu-empty">
                     No users found.
@@ -177,60 +143,33 @@ export default function ManageUsers() {
               {visible.map((u) => (
                 <tr key={u.id}>
                   <td>
-                    <div className="mu-name">{u.name}</div>
+                    <div className="mu-name">{u.full_name}</div>
                     <div className="mu-sub">{u.email}</div>
                   </td>
                   <td>
                     <span
-                      className={`mu-role${u.role === "Hospital" ? " hospital" : ""}`}
+                      className={`mu-role${u.role === "hospital_staff" ? " hospital" : ""}`}
                     >
-                      {u.role}
+                      {u.role === "hospital_staff" ? "Hospital staff" : u.role}
                     </span>
                   </td>
-                  <td>{u.county}</td>
+                  <td>{u.is_email_verified ? "Verified" : "Unverified"}</td>
                   <td>
                     <StatusBadge
-                      status={badgeFor[u.status].status}
-                      label={badgeFor[u.status].label}
+                      status={badgeFor[u.is_active ? "active" : "inactive"].status}
+                      label={badgeFor[u.is_active ? "active" : "inactive"].label}
                     />
                   </td>
                   <td>
                     <div className="mu-actions">
-                      {confirmId === u.id ? (
-                        <>
-                          <button
-                            type="button"
-                            className="mu-btn solid"
-                            onClick={() => remove(u)}
-                          >
-                            Confirm remove
-                          </button>
-                          <button
-                            type="button"
-                            className="mu-btn"
-                            onClick={() => setConfirmId(null)}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="mu-btn"
-                            onClick={() => toggleStatus(u)}
-                          >
-                            {u.status === "active" ? "Suspend" : "Reactivate"}
-                          </button>
-                          <button
-                            type="button"
-                            className="mu-btn danger"
-                            onClick={() => setConfirmId(u.id)}
-                          >
-                            Remove
-                          </button>
-                        </>
-                      )}
+                      <button
+                        type="button"
+                        className="mu-btn"
+                        disabled={busy}
+                        onClick={() => toggleStatus(u)}
+                      >
+                        {u.is_active ? "Deactivate" : "Activate"}
+                      </button>
                     </div>
                   </td>
                 </tr>

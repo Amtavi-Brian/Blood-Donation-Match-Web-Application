@@ -1,17 +1,49 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getMyDonorProfile, updateMyDonorProfile } from '../../services/donorService';
 
 function UpdateAvailability() {
-  const [availability, setAvailability] = useState(true);
-  const [location, setLocation] = useState('Nairobi, Kenya');
-  const [radius, setRadius] = useState('10');
-  const [notifications, setNotifications] = useState(true);
-  const [smsAlerts, setSmsAlerts] = useState(true);
+  const [availability, setAvailability] = useState(false);
+  const [location, setLocation] = useState('');
+  const [contactConsent, setContactConsent] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSave = (e) => {
+  useEffect(() => {
+    let active = true;
+    getMyDonorProfile()
+      .then((profile) => {
+        if (!active) return;
+        setAvailability(profile.available_to_contact);
+        setLocation(profile.city || '');
+        setContactConsent(profile.consent_to_contact);
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || 'Unable to load availability settings.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    setSaved(true);
+    setSaving(true);
+    setSaved(false);
+    setError('');
+    try {
+      await updateMyDonorProfile({
+        available_to_contact: availability,
+        city: location.trim() || null,
+        consent_to_contact: contactConsent,
+      });
+      setSaved(true);
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save availability settings.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const cardStyle = {
@@ -83,6 +115,8 @@ function UpdateAvailability() {
           ✓ Your availability preferences have been saved!
         </div>
       )}
+      {error && <p role="alert" style={{ color: '#b91c1c', marginBottom: 16 }}>{error}</p>}
+      {loading && <p role="status">Loading availability settings…</p>}
 
       <form onSubmit={handleSave}>
 
@@ -180,32 +214,6 @@ function UpdateAvailability() {
             />
           </div>
 
-          <div>
-            <label style={labelStyle}>Preferred Donation Radius</label>
-
-            <select
-              style={inputStyle}
-              value={radius}
-              onChange={(e) => {
-                setRadius(e.target.value);
-                setSaved(false);
-              }}
-            >
-              <option value="5">Within 5 km</option>
-              <option value="10">Within 10 km</option>
-              <option value="20">Within 20 km</option>
-              <option value="30">Within 30 km</option>
-              <option value="50">Within 50 km</option>
-            </select>
-
-            <p style={{
-              color: '#9ca3af',
-              fontSize: '11px',
-              marginTop: '8px',
-            }}>
-              This is your preferred search radius, not a guarantee of distance.
-            </p>
-          </div>
         </section>
 
         {/* NOTIFICATION PREFERENCES */}
@@ -219,21 +227,15 @@ function UpdateAvailability() {
             fontSize: '13px',
             marginBottom: '22px',
           }}>
-            Choose how you would like to receive donation alerts.
+            Consent to be contacted is required for hospitals to include you in donor matching.
           </p>
 
           {[
             {
-              title: 'Push Notifications',
-              description: 'Receive alerts when hospitals need your blood group.',
-              value: notifications,
-              setter: setNotifications,
-            },
-            {
-              title: 'SMS Notifications',
-              description: 'Receive urgent blood requests through SMS.',
-              value: smsAlerts,
-              setter: setSmsAlerts,
+              title: 'Allow hospitals to contact me',
+              description: 'Hospitals can see your matching profile and contact details for requests.',
+              value: contactConsent,
+              setter: setContactConsent,
             },
           ].map((item) => (
             <div
@@ -287,6 +289,7 @@ function UpdateAvailability() {
         }}>
           <button
             type="submit"
+            disabled={saving || loading}
             style={{
               background: '#991b1b',
               color: 'white',
@@ -297,7 +300,7 @@ function UpdateAvailability() {
               cursor: 'pointer',
             }}
           >
-            Save Preferences →
+            {saving ? 'Saving…' : 'Save Preferences →'}
           </button>
         </div>
 

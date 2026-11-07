@@ -1,21 +1,46 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getCurrentUser } from '../../services/authService';
+import { getMyDonorProfile, updateMyDonorProfile } from '../../services/donorService';
 
 function MyProfile() {
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const [profile, setProfile] = useState({
-    fullName: 'Lisa Ngacha',
-    email: 'lisa@example.com',
-    phone: '+254 712 345 678',
-    bloodGroup: 'O+',
-    location: 'Nairobi, Kenya',
-    gender: 'Female',
-    dateOfBirth: '2003-05-15',
-    availability: 'Available',
-    verified: 'Verified',
+    fullName: '',
+    email: '',
+    phone: '',
+    bloodGroup: '',
+    location: '',
+    availability: 'Unavailable',
+    verified: '',
   });
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getCurrentUser(), getMyDonorProfile()])
+      .then(([user, donor]) => {
+        if (!active) return;
+        setProfile({
+          fullName: user.full_name,
+          email: user.email,
+          phone: user.phone_number || '',
+          bloodGroup: donor.blood_group,
+          location: donor.city || '',
+          availability: donor.available_to_contact ? 'Available' : 'Unavailable',
+          verified: user.is_email_verified ? 'Email verified' : 'Email not verified',
+        });
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || 'Unable to load your profile.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleChange = (e) => {
     setProfile({
@@ -25,10 +50,30 @@ function MyProfile() {
     setSaved(false);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    setEditing(false);
-    setSaved(true);
+    setSaving(true);
+    setError('');
+    setSaved(false);
+    try {
+      const donor = await updateMyDonorProfile({
+        blood_group: profile.bloodGroup,
+        city: profile.location || null,
+        available_to_contact: profile.availability === 'Available',
+      });
+      setProfile((current) => ({
+        ...current,
+        bloodGroup: donor.blood_group,
+        location: donor.city || '',
+        availability: donor.available_to_contact ? 'Available' : 'Unavailable',
+      }));
+      setEditing(false);
+      setSaved(true);
+    } catch (saveError) {
+      setError(saveError.message || 'Unable to save your profile.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const inputStyle = {
@@ -72,7 +117,7 @@ function MyProfile() {
         name={name}
         value={profile[name]}
         onChange={handleChange}
-        disabled={!editing}
+        disabled={!editing || !['location'].includes(name)}
         style={inputStyle}
         required
       />
@@ -113,6 +158,9 @@ function MyProfile() {
             Manage your personal information and donor details.
           </p>
         </div>
+
+      {loading && <p role="status">Loading your profile…</p>}
+      {error && <p role="alert" style={{ color: '#b91c1c', marginBottom: 16 }}>{error}</p>}
 
         <button
           onClick={() => {
@@ -225,24 +273,6 @@ function MyProfile() {
             {field('Full Name', 'fullName')}
             {field('Email Address', 'email', 'email')}
             {field('Phone Number', 'phone', 'tel')}
-            {field('Date of Birth', 'dateOfBirth', 'date')}
-
-            <div style={fieldStyle}>
-              <label style={labelStyle}>Gender</label>
-              <select
-                name="gender"
-                value={profile.gender}
-                onChange={handleChange}
-                disabled={!editing}
-                style={inputStyle}
-              >
-                <option>Female</option>
-                <option>Male</option>
-                <option>Other</option>
-                <option>Prefer not to say</option>
-              </select>
-            </div>
-
             {field('Location', 'location')}
           </div>
         </div>
@@ -327,6 +357,7 @@ function MyProfile() {
 
             <button
               type="submit"
+              disabled={saving || loading}
               style={{
                 padding: '12px 25px',
                 border: 'none',
@@ -337,7 +368,7 @@ function MyProfile() {
                 cursor: 'pointer',
               }}
             >
-              Save Changes
+              {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         )}

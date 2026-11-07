@@ -1,52 +1,19 @@
+import { useEffect, useState } from "react";
 import StatusBadge from "../../componenets/ui/StatusBadge";
+import { getDashboardReport } from "../../services/reportService";
+import { getHospitals } from "../../services/hospitalService";
+import { getAuditLogs } from "../../services/adminService";
 
 const STATS = [
   {
     id: "hospitals",
+    key: "total_hospitals",
     icon: "🏥",
     label: "Total Hospitals",
-    value: 12,
     tone: "lavender",
   },
-  { id: "donors", icon: "👥", label: "Total Donors", value: 486, tone: "mint" },
-  { id: "alerts", icon: "🔔", label: "Active Alerts", value: 3, tone: "peach" },
-];
-
-const PENDING_APPROVALS = [
-  { id: 1, name: "Nairobi West Hospital" },
-  { id: 2, name: "Mbagathi Hospital" },
-  { id: 3, name: "Coast General Hospital" },
-];
-
-const ACTIVITY = [
-  {
-    id: 1,
-    icon: "👤",
-    tone: "green",
-    title: "New donor registered",
-    time: "1 hour ago",
-  },
-  {
-    id: 2,
-    icon: "✔",
-    tone: "green",
-    title: "Hospital account verified",
-    time: "2 hours ago",
-  },
-  {
-    id: 3,
-    icon: "🚨",
-    tone: "red",
-    title: "SOS alert sent",
-    time: "3 hours ago",
-  },
-  {
-    id: 4,
-    icon: "⚑",
-    tone: "blue",
-    title: "User reported",
-    time: "5 hours ago",
-  },
+  { id: "donors", key: "total_donors", icon: "👥", label: "Total Donors", tone: "mint" },
+  { id: "alerts", key: "pending_requests", icon: "🔔", label: "Pending Requests", tone: "peach" },
 ];
 
 const css = `
@@ -105,6 +72,30 @@ const css = `
 `;
 
 function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
+  const [summary, setSummary] = useState(null);
+  const [pendingHospitals, setPendingHospitals] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([
+      getDashboardReport(),
+      getHospitals({ verifiedOnly: false }),
+      getAuditLogs({ limit: 10 }),
+    ])
+      .then(([report, hospitals, audit]) => {
+        if (!active) return;
+        setSummary(report);
+        setPendingHospitals(hospitals.filter((hospital) => !hospital.is_verified));
+        setActivity(audit.logs);
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || "Unable to load administrator dashboard.");
+      });
+    return () => { active = false; };
+  }, []);
+
   return (
     <main className="ad">
       <style>{css}</style>
@@ -113,6 +104,7 @@ function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
         <h1 className="ad__title">Admin Dashboard</h1>
         <p className="ad__welcome">Welcome, Admin</p>
       </header>
+      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
 
       <section className="ad__stats" aria-label="Key figures">
         {STATS.map((s) => (
@@ -122,7 +114,7 @@ function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
             </div>
             <div>
               <span className="ad__stat-label">{s.label}</span>
-              <strong className="ad__stat-value">{s.value}</strong>
+              <strong className="ad__stat-value">{summary ? summary[s.key] : "—"}</strong>
             </div>
           </article>
         ))}
@@ -141,10 +133,10 @@ function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
             </button>
           </div>
 
-          {PENDING_APPROVALS.length === 0 ? (
+          {pendingHospitals.length === 0 ? (
             <p className="ad__empty">No hospitals waiting for approval.</p>
           ) : (
-            PENDING_APPROVALS.map((h) => (
+            pendingHospitals.slice(0, 5).map((h) => (
               <div key={h.id} className="ad__row">
                 <div className="ad__row-main">
                   <span className="ad__avatar" aria-hidden="true">
@@ -170,7 +162,16 @@ function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
             </button>
           </div>
 
-          {ACTIVITY.map((a) => (
+          {activity.map((entry) => (
+            (() => {
+              const a = {
+                id: entry.audit_id,
+                icon: entry.action.includes("hospital") ? "🏥" : "👤",
+                tone: entry.action.includes("failed") ? "red" : "green",
+                title: entry.description,
+                time: new Date(entry.created_at).toLocaleString(),
+              };
+              return (
             <div key={a.id} className="ad__row">
               <div className="ad__row-main">
                 <span
@@ -185,7 +186,10 @@ function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
                 </div>
               </div>
             </div>
+              );
+            })()
           ))}
+          {activity.length === 0 && <p className="ad__empty">No recent activity is available.</p>}
         </section>
       </div>
     </main>

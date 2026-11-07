@@ -1,49 +1,40 @@
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getMyDonations } from "../../services/donorService";
+import { getHospitals } from "../../services/hospitalService";
 
 function DonationHistory() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("All");
+  const [donations, setDonations] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Sample donation records (we'll connect these to the backend later)
-  const donations = [
-    {
-      id: 1,
-      date: "2026-10-20",
-      hospital: "Kenyatta National Hospital",
-      location: "Nairobi",
-      bloodGroup: "O+",
-      units: 1,
-      status: "Completed",
-    },
-    {
-      id: 2,
-      date: "2026-07-15",
-      hospital: "Aga Khan University Hospital",
-      location: "Nairobi",
-      bloodGroup: "O+",
-      units: 1,
-      status: "Completed",
-    },
-    {
-      id: 3,
-      date: "2026-04-10",
-      hospital: "Nairobi Hospital",
-      location: "Nairobi",
-      bloodGroup: "O+",
-      units: 1,
-      status: "Completed",
-    },
-    {
-      id: 4,
-      date: "2026-01-05",
-      hospital: "Kenyatta National Hospital",
-      location: "Nairobi",
-      bloodGroup: "O+",
-      units: 1,
-      status: "Pending",
-    },
-  ];
+  useEffect(() => {
+    let active = true;
+    Promise.all([getMyDonations(), getHospitals()])
+      .then(([records, hospitals]) => {
+        if (!active) return;
+        const hospitalsById = new Map(hospitals.map((hospital) => [hospital.id, hospital]));
+        setDonations(records.map((record) => {
+          const hospital = hospitalsById.get(record.hospital_id);
+          return {
+            id: record.donation_id,
+            date: record.donated_at.slice(0, 10),
+            hospital: hospital?.name || "Hospital",
+            location: hospital?.city || "Location unavailable",
+            bloodGroup: record.blood_type,
+            units: record.quantity,
+            status: record.verified ? "Verified" : "Unverified",
+          };
+        }));
+      })
+      .catch((loadError) => {
+        if (active) setError(loadError.message || "Unable to load donation history.");
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const filteredDonations = donations.filter((donation) => {
     const matchesSearch =
@@ -57,11 +48,11 @@ function DonationHistory() {
   });
 
   const completed = donations.filter(
-    (donation) => donation.status === "Completed"
+    (donation) => donation.status === "Verified"
   ).length;
 
   const totalUnits = donations
-    .filter((donation) => donation.status === "Completed")
+    .filter((donation) => donation.status === "Verified")
     .reduce((total, donation) => total + donation.units, 0);
 
   const styles = {
@@ -157,6 +148,8 @@ function DonationHistory() {
       <p style={styles.subtitle}>
         Keep track of your previous blood donations and their status.
       </p>
+      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
+      {loading && <p role="status">Loading donation history…</p>}
 
       <div style={styles.stats}>
         <div style={styles.card}>
@@ -193,8 +186,8 @@ function DonationHistory() {
           onChange={(e) => setFilter(e.target.value)}
         >
           <option value="All">All Donations</option>
-          <option value="Completed">Completed</option>
-          <option value="Pending">Pending</option>
+          <option value="Verified">Verified</option>
+          <option value="Unverified">Unverified</option>
         </select>
       </div>
 
@@ -216,7 +209,9 @@ function DonationHistory() {
           </thead>
 
           <tbody>
-            {filteredDonations.length > 0 ? (
+            {loading ? (
+              <tr><td colSpan="6" style={styles.empty}>Loading donation records…</td></tr>
+            ) : filteredDonations.length > 0 ? (
               filteredDonations.map((donation) => (
                 <tr key={donation.id}>
                   <td style={styles.td}>{donation.date}</td>
@@ -236,11 +231,11 @@ function DonationHistory() {
                         fontSize: "12px",
                         fontWeight: "600",
                         background:
-                          donation.status === "Completed"
+                          donation.status === "Verified"
                             ? "#dcfce7"
                             : "#fef3c7",
                         color:
-                          donation.status === "Completed"
+                          donation.status === "Verified"
                             ? "#166534"
                             : "#92400e",
                       }}

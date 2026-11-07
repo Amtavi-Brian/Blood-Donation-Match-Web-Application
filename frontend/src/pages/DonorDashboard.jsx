@@ -1,4 +1,5 @@
 
+import { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './DonorDashboard.css';
 
@@ -9,11 +10,49 @@ import SosAlerts from './donor/SosAlerts';
 import Reminders from './donor/Reminders';
 import DonorSettings from './donor/DonorSettings';
 import ReportsAnalytics from './donor/ReportsAnalytics';
+import useAuth from '../context/useAuth';
+import { getMyDonations, getMyDonorProfile } from '../services/donorService';
+import { getHospitals } from '../services/hospitalService';
+import { getUnreadNotificationCount } from '../services/notificationService';
 
 
 function DonorDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [donations, setDonations] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationError, setNotificationError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    Promise.all([getMyDonorProfile(), getMyDonations(), getHospitals()])
+      .then(([donorProfile, donationRecords, hospitalList]) => {
+        if (!active) return;
+        setProfile(donorProfile);
+        setDonations(donationRecords);
+        setHospitals(hospitalList);
+      })
+      .catch((error) => {
+        if (active) setLoadError(error.message || 'Unable to load donor data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getUnreadNotificationCount()
+      .then((count) => { if (active) setUnreadCount(count); })
+      .catch((error) => { if (active) setNotificationError(error.message || 'Unable to load notification count.'); });
+    return () => { active = false; };
+  }, []);
 
   const pagePaths = {
     Dashboard: '/donor',
@@ -32,14 +71,13 @@ function DonorDashboard() {
   const currentPath = location.pathname.replace(/\/+$/, '') || '/donor';
   const activePage = pathPages[currentPath] || 'Dashboard';
 
-  // Temporary demo data until backend integration
   const donor = {
-    name: 'John Doe',
-    bloodGroup: 'O+',
-    donations: 8,
-    livesSaved: 24,
-    nextEligibleDate: '20 Jan 2027',
-    status: 'Active',
+    name: user?.full_name || 'Donor',
+    bloodGroup: profile?.blood_group || 'Not set',
+    donations: donations.filter((item) => item.verified).length,
+    livesSaved: '—',
+    nextEligibleDate: 'Check with your hospital',
+    status: profile?.available_to_contact ? 'Available' : 'Unavailable',
   };
 
   const navigation = [
@@ -53,11 +91,21 @@ function DonorDashboard() {
     { name: 'Reports & Analytics', icon: '▥' },
   ];
 
-  const donations = [
-    { day: '20', month: 'OCT', hospital: 'Kenyatta National Hospital', date: '20 October 2026' },
-    { day: '15', month: 'JUL', hospital: 'Nairobi Hospital', date: '15 July 2026' },
-    { day: '10', month: 'APR', hospital: 'Aga Khan University Hospital', date: '10 April 2026' },
-  ];
+  const recentDonations = useMemo(() => donations
+    .filter((donation) => donation.verified)
+    .slice()
+    .sort((a, b) => new Date(b.donated_at) - new Date(a.donated_at))
+    .slice(0, 3)
+    .map((donation) => {
+      const donatedAt = new Date(donation.donated_at);
+      const hospital = hospitals.find((item) => item.id === donation.hospital_id);
+      return {
+        day: donatedAt.toLocaleDateString(undefined, { day: '2-digit' }),
+        month: donatedAt.toLocaleDateString(undefined, { month: 'short' }).toUpperCase(),
+        hospital: hospital?.name || 'Hospital',
+        date: donatedAt.toLocaleDateString(),
+      };
+    }), [donations, hospitals]);
 
   const handleNavigation = (page) => {
     navigate(pagePaths[page] || '/donor');
@@ -87,7 +135,7 @@ function DonorDashboard() {
         </div>
 
         <div className="sidebar-profile">
-          <div className="profile-avatar">JD</div>
+          <div className="profile-avatar">{donor.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</div>
           <div>
             <strong>{donor.name}</strong>
             <small>Verified Donor</small>
@@ -111,7 +159,10 @@ function DonorDashboard() {
 
         <button
           className="logout-btn"
-          onClick={() => alert('Logout will be connected to authentication.')}
+          onClick={() => {
+            logout();
+            navigate('/login', { replace: true });
+          }}
         >
           <span>↪</span> Log Out
         </button>
@@ -137,14 +188,18 @@ function DonorDashboard() {
               onClick={() => handleNavigation('Notifications')}
               aria-label="Notifications"
             >
-              🔔
+              🔔{unreadCount > 0 ? ` ${unreadCount}` : ''}
             </button>
-            <div className="profile-avatar">JD</div>
+            <div className="profile-avatar">{donor.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</div>
           </div>
         </header>
 
+        {loadError && <p role="alert" style={{ color: '#b91c1c' }}>{loadError}</p>}
+        {notificationError && <p role="alert" style={{ color: '#b91c1c' }}>{notificationError}</p>}
+        {loading && <p role="status">Loading your donor information…</p>}
+
         {/* DASHBOARD PAGE */}
-        {activePage === 'Dashboard' && (
+        {!loading && !loadError && activePage === 'Dashboard' && (
           <>
             <section className="stats-grid">
 
@@ -162,7 +217,7 @@ function DonorDashboard() {
                 <div>
                   <p>Lives Saved</p>
                   <h2>{donor.livesSaved}</h2>
-                  <span className="positive">Making a difference!</span>
+                  <span className="positive">Impact is not estimated by the system</span>
                 </div>
               </div>
 
@@ -205,8 +260,8 @@ function DonorDashboard() {
                 </div>
 
                 <div className="donation-list">
-                  {donations.map((donation, index) => (
-                    <div className="donation-row" key={index}>
+                  {recentDonations.length ? recentDonations.map((donation, index) => (
+                    <div className="donation-row" key={`${donation.date}-${index}`}>
                       <div className="date-box">
                         <strong>{donation.day}</strong>
                         <small>{donation.month}</small>
@@ -220,7 +275,7 @@ function DonorDashboard() {
 
                       <span className="completed">Completed</span>
                     </div>
-                  ))}
+                  )) : <p>No verified donations have been recorded yet.</p>}
                 </div>
               </div>
 

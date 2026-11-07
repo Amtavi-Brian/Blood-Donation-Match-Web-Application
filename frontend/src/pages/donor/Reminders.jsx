@@ -1,75 +1,75 @@
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { cancelReminder, createReminder, getMyReminders } from '../../services/donorService';
 
 function Reminders() {
-  const [reminders, setReminders] = useState([
-    {
-      id: 1,
-      title: 'Next Donation Eligibility',
-      description: 'Check whether you are eligible to donate blood again.',
-      date: '2027-01-20',
-      type: 'Eligibility',
-      completed: false,
-    },
-    {
-      id: 2,
-      title: 'Update Donor Profile',
-      description: 'Review your contact details and availability.',
-      date: '2026-11-10',
-      type: 'Profile',
-      completed: false,
-    },
-    {
-      id: 3,
-      title: 'Blood Donation Awareness',
-      description: 'Remember that your donation can help save lives.',
-      date: '2026-11-15',
-      type: 'Awareness',
-      completed: false,
-    },
-  ]);
+  const [reminders, setReminders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const [notifications, setNotifications] = useState(true);
+  const loadReminders = useCallback(async () => {
+    await Promise.resolve();
+    setError('');
+    try {
+      setReminders(await getMyReminders());
+    } catch (loadError) {
+      setError(loadError.message || 'Unable to load your reminders.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const toggleReminder = (id) => {
-    setReminders((previous) =>
-      previous.map((reminder) =>
-        reminder.id === id
-          ? { ...reminder, completed: !reminder.completed }
-          : reminder
-      )
-    );
+  useEffect(() => {
+    const timer = window.setTimeout(() => loadReminders(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadReminders]);
+
+  const toggleReminder = async (id) => {
+    setBusy(true);
+    setError('');
+    try {
+      await cancelReminder(id);
+      await loadReminders();
+    } catch (cancelError) {
+      setError(cancelError.message || 'Unable to cancel this reminder.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const completedCount = reminders.filter(
-    (reminder) => reminder.completed
+    (reminder) => reminder.status === 'sent'
   ).length;
 
-  const pendingCount = reminders.length - completedCount;
+  const pendingCount = reminders.filter(
+    (reminder) => reminder.status === 'pending'
+  ).length;
 
-  const addReminder = () => {
+  const addReminder = async () => {
     const title = prompt('Enter reminder title:');
-
     if (!title || !title.trim()) return;
-
     const date = prompt('Enter reminder date (YYYY-MM-DD):');
-
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       alert('Please enter a valid date in YYYY-MM-DD format.');
       return;
     }
 
-    setReminders((previous) => [
-      ...previous,
-      {
-        id: Date.now(),
+    setBusy(true);
+    setError('');
+    try {
+      await createReminder({
         title: title.trim(),
-        description: 'Personal reminder added by you.',
-        date,
-        type: 'Personal',
-        completed: false,
-      },
-    ]);
+        message: 'Personal reminder added by you.',
+        reminder_type: 'personal',
+        scheduled_at: `${date}T09:00:00Z`,
+      });
+      await loadReminders();
+    } catch (createError) {
+      setError(createError.message || 'Unable to create this reminder.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const styles = {
@@ -158,31 +158,10 @@ function Reminders() {
         </div>
       </div>
 
-      {/* NOTIFICATION SETTINGS */}
       <div style={{ ...styles.card, marginBottom: '25px' }}>
-        <h3 style={{ marginTop: 0 }}>Notification Preferences</h3>
-
-        <label style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          cursor: 'pointer',
-        }}>
-          <input
-            type="checkbox"
-            checked={notifications}
-            onChange={(e) => setNotifications(e.target.checked)}
-          />
-
-          <span>
-            Receive donation reminder notifications
-          </span>
-        </label>
-
+        <h3 style={{ marginTop: 0 }}>Reminder delivery</h3>
         <small style={{ color: '#6b7280' }}>
-          {notifications
-            ? 'Notifications are enabled in this demo.'
-            : 'Notifications are switched off in this demo.'}
+          Reminders are saved to your account. Email delivery requires the backend email service to be configured.
         </small>
       </div>
 
@@ -197,15 +176,17 @@ function Reminders() {
       }}>
         <h2 style={{ fontSize: '20px' }}>Your Reminders</h2>
 
-        <button style={styles.button} onClick={addReminder}>
+        <button style={styles.button} onClick={addReminder} disabled={busy}>
           + Add Reminder
         </button>
       </div>
+      {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
+      {loading && <p role="status">Loading reminders…</p>}
 
-      {reminders.map((reminder) => (
-        <div key={reminder.id} style={{
+      {!loading && reminders.map((reminder) => (
+        <div key={reminder.reminder_id} style={{
           ...styles.reminder,
-          opacity: reminder.completed ? 0.65 : 1,
+          opacity: reminder.status === 'cancelled' ? 0.65 : 1,
         }}>
           <div style={{ flex: 1 }}>
             <div style={{
@@ -216,7 +197,7 @@ function Reminders() {
             }}>
               <h3 style={{
                 margin: '0 0 8px',
-                textDecoration: reminder.completed
+                textDecoration: reminder.status === 'cancelled'
                   ? 'line-through'
                   : 'none',
               }}>
@@ -224,36 +205,35 @@ function Reminders() {
               </h3>
 
               <span style={{
-                background: reminder.completed ? '#dcfce7' : '#fee2e2',
-                color: reminder.completed ? '#166534' : '#991b1b',
+                background: reminder.status === 'pending' ? '#fee2e2' : '#dcfce7',
+                color: reminder.status === 'pending' ? '#991b1b' : '#166534',
                 padding: '5px 10px',
                 borderRadius: '20px',
                 fontSize: '11px',
                 fontWeight: '600',
               }}>
-                {reminder.completed ? 'Completed' : 'Pending'}
+                {reminder.status}
               </span>
             </div>
 
             <p style={{ color: '#6b7280', fontSize: '14px' }}>
-              {reminder.description}
+              {reminder.message}
             </p>
 
             <small style={{ color: '#991b1b', fontWeight: '600' }}>
-              📅 {reminder.date} · {reminder.type}
+              📅 {new Date(reminder.scheduled_at).toLocaleString()} · {reminder.reminder_type}
             </small>
           </div>
 
           <button
             style={{
               ...styles.button,
-              background: reminder.completed ? '#6b7280' : '#166534',
+              background: reminder.status !== 'pending' ? '#6b7280' : '#166534',
             }}
-            onClick={() => toggleReminder(reminder.id)}
+            onClick={() => toggleReminder(reminder.reminder_id)}
+            disabled={busy || reminder.status !== 'pending'}
           >
-            {reminder.completed
-              ? 'Undo'
-              : 'Mark Completed'}
+            {reminder.status === 'pending' ? 'Cancel reminder' : reminder.status}
           </button>
         </div>
       ))}
@@ -263,8 +243,7 @@ function Reminders() {
         color: '#9ca3af',
         marginTop: '20px',
       }}>
-        Demo reminder data. Notifications and reminders are not yet
-        connected to the backend.
+        Only pending reminders can be cancelled.
       </p>
     </div>
   );

@@ -350,10 +350,10 @@ copy .env.example .env
 **Start the development server**
 
 ```bash
-npm start
+npm run dev
 ```
 
-If your project uses Vite, use `npm run dev` instead. Check the `scripts` section of `frontend/package.json` to confirm.
+The frontend uses `VITE_API_BASE_URL` to locate the API. The provided `.env.example` points to the local FastAPI server at `http://127.0.0.1:8000/api/v1`. The backend allows both `localhost` and `127.0.0.1` frontend origins on ports 3000 and 5173.
 
 The frontend is now running at:
 
@@ -372,16 +372,15 @@ Never commit your real `.env` files. Only `.env.example` files belong in GitHub.
 |---|---|---|
 | `DATABASE_URL` | Database connection string | `sqlite:///./app.db` |
 | `SECRET_KEY` | Key used to sign tokens | *(ask the team lead)* |
-| `ALLOWED_ORIGINS` | Frontend URLs allowed by CORS | `http://localhost:3000` |
+| `ALLOWED_ORIGINS` | Comma-separated frontend URLs allowed by CORS | `http://localhost:5173,http://127.0.0.1:5173` |
 
 ### Frontend (`frontend/.env`)
 
 | Variable | Description | Example |
 |---|---|---|
-| `REACT_APP_API_URL` | Backend base URL (Create React App) | `http://127.0.0.1:8000` |
-| `VITE_API_URL` | Backend base URL (Vite) | `http://127.0.0.1:8000` |
+| `VITE_API_BASE_URL` | FastAPI base URL, including `/api/v1` | `http://localhost:8000/api/v1` |
 
-Use only the variable that matches your setup. After changing a frontend `.env` file, restart the dev server.
+After changing the frontend `.env` file, restart the Vite dev server. New donor accounts must verify their email before they can log in. To deliver verification codes, set `EMAILS_ENABLED=true` and configure the SMTP settings in `backend/.env`.
 
 ---
 

@@ -1,49 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "../../componenets/ui/Card";
 import StatusBadge from "../../componenets/ui/StatusBadge";
-
-const initialHospitals = [
-  {
-    id: 1,
-    name: "Kenyatta National Hospital",
-    county: "Nairobi",
-    contact: "bloodbank@knh.or.ke",
-    requests: 12,
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Aga Khan University Hospital",
-    county: "Nairobi",
-    contact: "lab@akuh.org",
-    requests: 8,
-    status: "active",
-  },
-  {
-    id: 3,
-    name: "Nairobi Hospital",
-    county: "Nairobi",
-    contact: "bloodbank@nairobihospital.org",
-    requests: 5,
-    status: "active",
-  },
-  {
-    id: 4,
-    name: "Coast General Hospital",
-    county: "Mombasa",
-    contact: "info@coastgeneral.go.ke",
-    requests: 3,
-    status: "suspended",
-  },
-  {
-    id: 5,
-    name: "Kiambu Level 5 Hospital",
-    county: "Kiambu",
-    contact: "records@kiambuhosp.go.ke",
-    requests: 2,
-    status: "active",
-  },
-];
+import { getHospitals, setHospitalVerification } from "../../services/hospitalService";
 
 const badgeFor = {
   active: { status: "fulfilled", label: "Active" },
@@ -72,25 +30,35 @@ const css = `
 `;
 
 export default function ManageHospitals() {
-  const [hospitals, setHospitals] = useState(initialHospitals);
+  const [hospitals, setHospitals] = useState([]);
   const [query, setQuery] = useState("");
-  const [confirmId, setConfirmId] = useState(null);
   const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
 
-  const toggleStatus = (h) => {
-    const next = h.status === "active" ? "suspended" : "active";
-    setHospitals((list) =>
-      list.map((x) => (x.id === h.id ? { ...x, status: next } : x)),
-    );
-    setNotice(
-      `${h.name} ${next === "active" ? "reactivated" : "suspended"}. Action recorded in the audit log.`,
-    );
-  };
+  useEffect(() => {
+    let active = true;
+    getHospitals({ verifiedOnly: false })
+      .then((items) => { if (active) setHospitals(items); })
+      .catch((loadError) => { if (active) setError(loadError.message || "Unable to load hospitals."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-  const remove = (h) => {
-    setHospitals((list) => list.filter((x) => x.id !== h.id));
-    setConfirmId(null);
-    setNotice(`${h.name} removed. Action recorded in the audit log.`);
+  const toggleStatus = async (hospital) => {
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const updated = await setHospitalVerification(hospital.id, !hospital.is_verified);
+      setHospitals((list) => list.map((item) => item.id === updated.id ? updated : item));
+      setNotice(`${updated.name} ${updated.is_verified ? "verified" : "unverified"}.`);
+    } catch (requestError) {
+      setError(requestError.message || "Unable to update hospital verification.");
+    } finally {
+      setBusy(false);
+    }
   };
 
   const q = query.trim().toLowerCase();
@@ -98,7 +66,7 @@ export default function ManageHospitals() {
     (h) =>
       !q ||
       h.name.toLowerCase().includes(q) ||
-      h.county.toLowerCase().includes(q),
+      h.city.toLowerCase().includes(q),
   );
 
   return (
@@ -107,10 +75,11 @@ export default function ManageHospitals() {
 
       <div className="mh-head">
         <h1>Manage Hospitals</h1>
-        <p>View, suspend or remove registered hospital accounts.</p>
+        <p>Review registered hospitals and update their verification status.</p>
       </div>
 
       {notice && <div className="mh-notice">{notice}</div>}
+      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
 
       <Card
         title="Registered Hospitals"
@@ -130,14 +99,17 @@ export default function ManageHospitals() {
             <thead>
               <tr>
                 <th>Hospital</th>
-                <th>County</th>
-                <th>Requests</th>
+                <th>City</th>
+                <th>Registration number</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {visible.length === 0 && (
+              {loading && (
+                <tr><td colSpan={5} className="mh-empty">Loading hospitals…</td></tr>
+              )}
+              {!loading && visible.length === 0 && (
                 <tr>
                   <td colSpan={5} className="mh-empty">
                     No hospitals found.
@@ -148,53 +120,26 @@ export default function ManageHospitals() {
                 <tr key={h.id}>
                   <td>
                     <div className="mh-name">{h.name}</div>
-                    <div className="mh-sub">{h.contact}</div>
+                    <div className="mh-sub">{h.contact_phone}</div>
                   </td>
-                  <td>{h.county}</td>
-                  <td>{h.requests}</td>
+                  <td>{h.city}</td>
+                  <td>{h.registration_number}</td>
                   <td>
                     <StatusBadge
-                      status={badgeFor[h.status].status}
-                      label={badgeFor[h.status].label}
+                      status={badgeFor[h.is_verified ? "active" : "suspended"].status}
+                      label={badgeFor[h.is_verified ? "active" : "suspended"].label}
                     />
                   </td>
                   <td>
                     <div className="mh-actions">
-                      {confirmId === h.id ? (
-                        <>
-                          <button
-                            type="button"
-                            className="mh-btn solid"
-                            onClick={() => remove(h)}
-                          >
-                            Confirm remove
-                          </button>
-                          <button
-                            type="button"
-                            className="mh-btn"
-                            onClick={() => setConfirmId(null)}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="mh-btn"
-                            onClick={() => toggleStatus(h)}
-                          >
-                            {h.status === "active" ? "Suspend" : "Reactivate"}
-                          </button>
-                          <button
-                            type="button"
-                            className="mh-btn danger"
-                            onClick={() => setConfirmId(h.id)}
-                          >
-                            Remove
-                          </button>
-                        </>
-                      )}
+                      <button
+                        type="button"
+                        className="mh-btn"
+                        disabled={busy}
+                        onClick={() => toggleStatus(h)}
+                      >
+                        {h.is_verified ? "Revoke verification" : "Verify"}
+                      </button>
                     </div>
                   </td>
                 </tr>

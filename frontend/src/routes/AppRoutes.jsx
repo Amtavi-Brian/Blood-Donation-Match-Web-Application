@@ -10,6 +10,13 @@ import ManageHospitals from "../pages/admin/ManageHospitals";
 import ManageUsers from "../pages/admin/ManageUsers";
 import SystemAlerts from "../pages/admin/SystemAlerts";
 import VerifyHospitals from "../pages/admin/VerifyHospitals";
+import RoleRoute from "./RoleRoute";
+import HospitalPortal from "../pages/hospital/HospitalPortal";
+import NotificationsPage from "../pages/shared/NotificationsPage";
+
+function withRole(role, element) {
+  return <RoleRoute allowedRoles={[role]}>{element}</RoleRoute>;
+}
 
 function ComingSoon({ page }) {
   return (
@@ -40,35 +47,35 @@ export default function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      <Route path="/donor" element={<DonorDashboard />} />
-      <Route path="/donor/profile" element={<DonorDashboard />} />
-      <Route path="/donor/availability" element={<DonorDashboard />} />
-      <Route path="/donor/history" element={<DonorDashboard />} />
-      <Route path="/donor/sos-alerts" element={<DonorDashboard />} />
-      <Route path="/donor/reminders" element={<DonorDashboard />} />
-      <Route path="/donor/settings" element={<DonorDashboard />} />
-      <Route path="/donor/analytics" element={<DonorDashboard />} />
-      <Route path="/notifications" element={<ComingSoon page="Notifications" />} />
+      <Route path="/donor" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/donor/profile" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/donor/availability" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/donor/history" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/donor/sos-alerts" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/donor/reminders" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/donor/settings" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/donor/analytics" element={withRole("donor", <DonorDashboard />)} />
+      <Route path="/notifications" element={<RoleRoute allowedRoles={["donor", "hospital_staff", "admin"]}><NotificationsPage /></RoleRoute>} />
 
-      <Route path="/hospital" element={<ComingSoon page="Hospital portal" />} />
-      <Route path="/hospital/dashboard" element={<ComingSoon page="Hospital dashboard" />} />
-      <Route path="/hospital/requests" element={<ComingSoon page="Blood requests" />} />
-      <Route path="/hospital/search" element={<ComingSoon page="Donor search" />} />
-      <Route path="/hospital/blood-search" element={<ComingSoon page="Blood search" />} />
-      <Route path="/hospital/stock" element={<ComingSoon page="Blood stock" />} />
-      <Route path="/hospital/donations" element={<ComingSoon page="Record donation" />} />
-      <Route path="/hospital/analytics" element={<ComingSoon page="Hospital analytics" />} />
-      <Route path="/hospital/settings" element={<ComingSoon page="Hospital settings" />} />
-      <Route path="/hospital/*" element={<ComingSoon page="Hospital portal" />} />
+      <Route path="/hospital" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/dashboard" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/requests" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/search" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/blood-search" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/stock" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/donations" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/analytics" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/settings" element={withRole("hospital_staff", <HospitalPortal />)} />
+      <Route path="/hospital/*" element={withRole("hospital_staff", <HospitalPortal />)} />
 
-      <Route path="/admin" element={<AdminHomeRoute />} />
-      <Route path="/admin/hospitals" element={<ManageHospitals />} />
-      <Route path="/admin/users" element={<ManageUsers />} />
-      <Route path="/admin/verify-hospitals" element={<VerifyHospitals />} />
-      <Route path="/admin/alerts" element={<SystemAlerts />} />
-      <Route path="/admin/reports" element={<AdminReport />} />
-      <Route path="/admin/settings" element={<AdminSettings />} />
-      <Route path="/admin/*" element={<ComingSoon page="Admin page not found" />} />
+      <Route path="/admin" element={withRole("admin", <AdminHomeRoute />)} />
+      <Route path="/admin/hospitals" element={withRole("admin", <ManageHospitals />)} />
+      <Route path="/admin/users" element={withRole("admin", <ManageUsers />)} />
+      <Route path="/admin/verify-hospitals" element={withRole("admin", <VerifyHospitals />)} />
+      <Route path="/admin/alerts" element={withRole("admin", <SystemAlerts />)} />
+      <Route path="/admin/reports" element={withRole("admin", <AdminReport />)} />
+      <Route path="/admin/settings" element={withRole("admin", <AdminSettings />)} />
+      <Route path="/admin/*" element={withRole("admin", <ComingSoon page="Admin page not found" />)} />
       <Route path="*" element={<ComingSoon page="Page not found" />} />
     </Routes>
   );

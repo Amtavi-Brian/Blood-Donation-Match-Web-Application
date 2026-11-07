@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import hash_password, verify_password
 from app.models.audit_log import AuditLog
+from app.models.donor_profile import DonorProfile
 from app.models.user import User, UserRole
 from app.schemas.auth import UserCreate
 from app.schemas.hospital import HospitalStaffAccountCreate
@@ -35,6 +36,37 @@ def create_user(db: Session, user_data: UserCreate) -> User | None:
     try:
         db.add(new_user)
         db.flush()
+
+        if user_data.blood_group is not None:
+            donor_profile = DonorProfile(
+                user_id=new_user.id,
+                blood_group=user_data.blood_group,
+                latitude=(
+                    user_data.latitude
+                    if user_data.consent_to_share_location
+                    else None
+                ),
+                longitude=(
+                    user_data.longitude
+                    if user_data.consent_to_share_location
+                    else None
+                ),
+                consent_to_share_location=user_data.consent_to_share_location,
+            )
+            db.add(donor_profile)
+            db.flush()
+
+            db.add(
+                AuditLog(
+                    user_id=new_user.id,
+                    action="donor_profile_created",
+                    entity_type="donor_profile",
+                    entity_id=donor_profile.id,
+                    description=(
+                        f"Created donor profile with ID {donor_profile.id}."
+                    ),
+                )
+            )
 
         audit_log = AuditLog(
             user_id=new_user.id,

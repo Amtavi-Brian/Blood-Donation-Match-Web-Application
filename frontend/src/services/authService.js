@@ -1,21 +1,54 @@
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+import { apiRequest } from "./apiClient";
 
-// Test: any email + password "password123".
-// Emails starting with "hospital" or "admin" log in as those roles.
 export async function loginUser({ email, password }) {
-  await wait(700);
-  if (password !== "password123") throw new Error("Wrong email or password.");
+  const tokenResponse = await apiRequest("/auth/login", {
+    method: "POST",
+    body: { email, password },
+  });
+  const user = await apiRequest("/users/me", {
+    token: tokenResponse.access_token,
+  });
 
-  let role = "donor";
-  if (email.startsWith("hospital")) role = "hospital";
-  if (email.startsWith("admin")) role = "admin";
-
-  return { token: "fake-token", user: { email, role } };
+  return { token: tokenResponse.access_token, user };
 }
 
-// Test the error with taken@example.com
-export async function registerUser(data) {
-  await wait(700);
-  if (data.email === "taken@example.com") throw new Error("That email is already registered.");
-  return { id: 1, email: data.email, role: "donor" };
+export function registerUser({
+  fullName,
+  phone,
+  email,
+  password,
+  bloodType,
+  location,
+}) {
+  return apiRequest("/auth/register", {
+    method: "POST",
+    body: {
+      full_name: fullName,
+      phone_number: phone,
+      email,
+      password,
+      blood_group: bloodType,
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
+      consent_to_share_location: Boolean(location),
+    },
+  });
+}
+
+export function verifyEmail(email, otp) {
+  return apiRequest("/auth/verify-email", {
+    method: "POST",
+    body: { email, otp },
+  });
+}
+
+export function resendVerificationOtp(email) {
+  return apiRequest("/auth/resend-otp", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export function getCurrentUser(token) {
+  return apiRequest("/users/me", { token });
 }

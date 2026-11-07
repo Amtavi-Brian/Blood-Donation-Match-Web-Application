@@ -1,15 +1,24 @@
 import { useState } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { loginUser } from "../../services/authService";
+import useAuth from "../../context/useAuth";
 
-const ROLE_HOME = { donor: "/donor", hospital: "/hospital", admin: "/admin" };
+const ROLE_HOME = {
+  donor: "/donor",
+  hospital_staff: "/hospital",
+  admin: "/admin",
+};
 
 export default function LoginForm() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { setSession } = useAuth();
   const justRegistered = location.state?.registered;
 
-  const [values, setValues] = useState({ email: "", password: "" });
+  const [values, setValues] = useState({
+    email: location.state?.email ?? "",
+    password: "",
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
@@ -38,10 +47,10 @@ export default function LoginForm() {
     setIsSubmitting(true);
     try {
       const result = await loginUser(values);
-      localStorage.setItem("token", result.token); // placeholder until AuthContext exists
-      navigate(ROLE_HOME[result.user.role] || "/");
+      setSession(result);
+      navigate(ROLE_HOME[result.user.role] || "/", { replace: true });
     } catch (err) {
-      setServerError(err.message);
+      setServerError(err.message || "Unable to log in. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

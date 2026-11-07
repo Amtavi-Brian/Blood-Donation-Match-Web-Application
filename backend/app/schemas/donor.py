@@ -31,5 +31,6 @@ class DonorProfileResponse(BaseModel):
     city: str | None
     available_to_contact: bool
     consent_to_contact: bool
+    consent_to_share_location: bool
 
     model_config = ConfigDict(from_attributes=True)

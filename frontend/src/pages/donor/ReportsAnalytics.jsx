@@ -1,49 +1,104 @@
 
-import React, { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import './ReportsAnalytics.css';
-
-const monthlyData = [
-  { month: 'May', donations: 18 },
-  { month: 'Jun', donations: 25 },
-  { month: 'Jul', donations: 20 },
-  { month: 'Aug', donations: 32 },
-  { month: 'Sep', donations: 27 },
-  { month: 'Oct', donations: 40 },
-];
-
-const bloodGroups = [
-  { group: 'O+', count: 45, percent: 90 },
-  { group: 'A+', count: 32, percent: 64 },
-  { group: 'B+', count: 25, percent: 50 },
-  { group: 'AB+', count: 18, percent: 36 },
-  { group: 'O-', count: 15, percent: 30 },
-  { group: 'A-', count: 10, percent: 20 },
-];
-
-const recentActivity = [
-  { hospital: 'Kenyatta National Hospital', type: 'O+', date: '20 Oct 2026', status: 'Completed' },
-  { hospital: 'Nairobi Hospital', type: 'A+', date: '15 Oct 2026', status: 'Completed' },
-  { hospital: 'Aga Khan Hospital', type: 'B+', date: '10 Oct 2026', status: 'Pending' },
-  { hospital: 'MP Shah Hospital', type: 'O+', date: '05 Oct 2026', status: 'Completed' },
-];
+import { getMyDonations } from '../../services/donorService';
+import { getHospitals } from '../../services/hospitalService';
 
 function ReportsAnalytics() {
   const [period, setPeriod] = useState('Last 6 months');
+  const [donations, setDonations] = useState([]);
+  const [hospitals, setHospitals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const totalDonations = monthlyData.reduce(
-    (total, item) => total + item.donations,
-    0
-  );
+  useEffect(() => {
+    let active = true;
+    Promise.all([getMyDonations(), getHospitals()])
+      .then(([records, hospitalList]) => {
+        if (!active) return;
+        setDonations(records);
+        setHospitals(hospitalList);
+      })
+      .catch((loadError) => { if (active) setError(loadError.message || 'Unable to load donor analytics.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-  const maxDonations = Math.max(...monthlyData.map(item => item.donations));
+  const filteredDonations = useMemo(() => {
+    const now = new Date();
+    const cutoff = new Date(now);
+    if (period === 'Last 30 days') cutoff.setDate(now.getDate() - 30);
+    else if (period === 'This year') cutoff.setMonth(0, 1);
+    else cutoff.setMonth(now.getMonth() - 5, 1);
+    return donations.filter((donation) => new Date(donation.donated_at) >= cutoff);
+  }, [donations, period]);
+
+  const monthlyData = useMemo(() => {
+    const months = [];
+    for (let offset = 5; offset >= 0; offset -= 1) {
+      const month = new Date();
+      month.setDate(1);
+      month.setMonth(month.getMonth() - offset);
+      const key = `${month.getFullYear()}-${month.getMonth()}`;
+      months.push({
+        key,
+        month: month.toLocaleDateString(undefined, { month: 'short' }),
+        donations: filteredDonations.filter((item) => {
+          const date = new Date(item.donated_at);
+          return `${date.getFullYear()}-${date.getMonth()}` === key && item.verified;
+        }).length,
+      });
+    }
+    return months;
+  }, [filteredDonations]);
+
+  const bloodGroups = useMemo(() => {
+    const counts = new Map();
+    filteredDonations.forEach((donation) => {
+      counts.set(donation.blood_type, (counts.get(donation.blood_type) || 0) + 1);
+    });
+    const max = Math.max(1, ...counts.values());
+    return [...counts].map(([group, count]) => ({
+      group,
+      count,
+      percent: Math.round((count / max) * 100),
+    }));
+  }, [filteredDonations]);
+
+  const recentActivity = useMemo(() => filteredDonations
+    .slice()
+    .sort((a, b) => new Date(b.donated_at) - new Date(a.donated_at))
+    .slice(0, 5)
+    .map((donation) => ({
+      hospital: hospitals.find((item) => item.id === donation.hospital_id)?.name || `Hospital #${donation.hospital_id}`,
+      type: donation.blood_type,
+      date: new Date(donation.donated_at).toLocaleDateString(),
+      status: donation.verified ? 'Verified' : 'Unverified',
+    })), [filteredDonations, hospitals]);
+
+  const verifiedDonations = filteredDonations.filter((item) => item.verified);
+  const pendingDonations = filteredDonations.filter((item) => !item.verified);
+  const totalUnits = verifiedDonations.reduce((total, item) => total + item.quantity, 0);
+  const maxDonations = Math.max(1, ...monthlyData.map((item) => item.donations));
+
+  if (error && !loading) {
+    return (
+      <div className="reports-page">
+        <h2>My Donation History</h2>
+        <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="reports-page">
       <div className="reports-heading">
         <div>
-          <h2>Reports & Analytics</h2>
-          <p>Track donation performance and blood donation insights.</p>
+          <h2>My Donation History</h2>
+          <p>Insights calculated from your recorded donation history.</p>
         </div>
+        {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
+        {loading && <p role="status">Loading your donation analytics…</p>}
 
         <select
           value={period}
@@ -62,35 +117,35 @@ function ReportsAnalytics() {
           <div className="report-icon red-icon">🩸</div>
           <div>
             <p>Total Donations</p>
-            <h3>{totalDonations}</h3>
-            <span>Across all recorded months</span>
+            <h3>{filteredDonations.length}</h3>
+            <span>Records in selected period</span>
           </div>
         </div>
 
         <div className="report-stat-card">
           <div className="report-icon green-icon">❤️</div>
           <div>
-            <p>Lives Impacted</p>
-            <h3>225</h3>
-            <span>Estimated lives reached</span>
+            <p>Verified Units</p>
+            <h3>{totalUnits}</h3>
+            <span>Units in verified records</span>
           </div>
         </div>
 
         <div className="report-stat-card">
           <div className="report-icon blue-icon">👥</div>
           <div>
-            <p>Active Donors</p>
-            <h3>148</h3>
-            <span>Registered active donors</span>
+            <p>Awaiting Verification</p>
+            <h3>{pendingDonations.length}</h3>
+            <span>Unverified donation records</span>
           </div>
         </div>
 
         <div className="report-stat-card">
           <div className="report-icon orange-icon">🏥</div>
           <div>
-            <p>Partner Hospitals</p>
-            <h3>12</h3>
-            <span>Participating facilities</span>
+            <p>Blood Groups</p>
+            <h3>{new Set(filteredDonations.map((item) => item.blood_type)).size}</h3>
+            <span>In your donation records</span>
           </div>
         </div>
       </div>
@@ -161,24 +216,24 @@ function ReportsAnalytics() {
           <div className="status-item">
             <span className="status-dot completed-dot"></span>
             <div>
-              <strong>85%</strong>
-              <p>Completed</p>
+              <strong>{verifiedDonations.length}</strong>
+              <p>Verified records</p>
             </div>
           </div>
 
           <div className="status-item">
             <span className="status-dot pending-dot"></span>
             <div>
-              <strong>10%</strong>
-              <p>Pending</p>
+              <strong>{pendingDonations.length}</strong>
+              <p>Awaiting verification</p>
             </div>
           </div>
 
           <div className="status-item">
             <span className="status-dot cancelled-dot"></span>
             <div>
-              <strong>5%</strong>
-              <p>Cancelled</p>
+              <strong>{filteredDonations.length}</strong>
+              <p>Total records</p>
             </div>
           </div>
         </div>
@@ -215,7 +270,7 @@ function ReportsAnalytics() {
                   <td>
                     <span
                       className={`activity-status ${
-                        activity.status === 'Completed'
+                        activity.status === 'Verified'
                           ? 'activity-completed'
                           : 'activity-pending'
                       }`}
@@ -230,10 +285,7 @@ function ReportsAnalytics() {
         </div>
       </section>
 
-      <p className="reports-demo-note">
-        These are demonstration figures. Live reports will be populated from
-        the BloodLink database when backend integration is complete.
-      </p>
+      {!loading && filteredDonations.length === 0 && <p>No donation records were found for this period.</p>}
     </div>
   );
 }

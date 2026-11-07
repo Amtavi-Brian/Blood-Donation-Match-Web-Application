@@ -1,8 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { registerUser } from "../../services/authService";
+import {
+  registerUser,
+  resendVerificationOtp,
+  verifyEmail,
+} from "../../services/authService";
 import { BLOOD_TYPES } from "../../utils/constants";
 import { isValidKenyanPhone } from "../../utils/validators";
+import { ApiError } from "../../services/apiClient";
 
 export default function DonorRegisterForm() {
   const navigate = useNavigate();
@@ -14,6 +19,8 @@ export default function DonorRegisterForm() {
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const [otp, setOtp] = useState("");
 
   const [coords, setCoords] = useState(null);
   const [locationMessage, setLocationMessage] = useState("");
@@ -34,7 +41,7 @@ export default function DonorRegisterForm() {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
         });
-        setLocationMessage("Location added.");
+        setLocationMessage("Location will be shared for donor matching.");
       },
       () => setLocationMessage("Couldn't get your location. You can add it later in your profile.")
     );
@@ -63,14 +70,87 @@ export default function DonorRegisterForm() {
       await registerUser({
         ...values,
         phone: values.phone.replace(/\s/g, ""),
+        bloodType: values.bloodType,
         location: coords,
       });
-      navigate("/login", { state: { registered: true } });
+      setAwaitingVerification(true);
     } catch (err) {
-      setServerError(err.message);
+      if (err instanceof ApiError && err.status === 503) {
+        setAwaitingVerification(true);
+      }
+      setServerError(err.message || "Unable to create your account.");
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleVerifyEmail(e) {
+    e.preventDefault();
+    setServerError("");
+
+    if (!/^\d{6}$/.test(otp)) {
+      setServerError("Enter the 6-digit code from your email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await verifyEmail(values.email, otp);
+      navigate("/login", {
+        state: { registered: true, email: values.email },
+      });
+    } catch (err) {
+      setServerError(err.message || "Unable to verify your email.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendCode() {
+    setServerError("");
+    setIsSubmitting(true);
+    try {
+      await resendVerificationOtp(values.email);
+      setServerError("If your account is awaiting verification, a new code has been sent.");
+    } catch (err) {
+      setServerError(err.message || "Unable to resend the verification code.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (awaitingVerification) {
+    return (
+      <form onSubmit={handleVerifyEmail} noValidate>
+        <p className="pub-note">
+          Enter the 6-digit verification code sent to {values.email}.
+        </p>
+        <div className={`pub-field ${serverError ? "pub-has-error" : ""}`}>
+          <label htmlFor="verificationCode">Email verification code</label>
+          <input
+            id="verificationCode"
+            name="verificationCode"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={otp}
+            onChange={(event) => setOtp(event.target.value.replace(/\D/g, ""))}
+          />
+        </div>
+        {serverError && <p className="pub-form-error" role="alert">{serverError}</p>}
+        <button className="pub-btn pub-btn-primary pub-btn-block" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Verifying..." : "Verify email"}
+        </button>
+        <button
+          type="button"
+          className="pub-btn pub-btn-ghost pub-btn-block"
+          onClick={handleResendCode}
+          disabled={isSubmitting}
+        >
+          Resend code
+        </button>
+      </form>
+    );
   }
 
   return (
@@ -121,7 +201,7 @@ export default function DonorRegisterForm() {
       </div>
 
       <button type="button" className="pub-btn pub-btn-ghost pub-btn-block" onClick={handleUseLocation}>
-        Use my current location
+        Share my location for donor matching
       </button>
       <p className="pub-location-msg">{locationMessage}</p>
 
