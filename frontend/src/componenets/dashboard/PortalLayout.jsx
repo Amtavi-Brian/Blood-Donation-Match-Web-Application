@@ -1,4 +1,4 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import "./PortalLayout.css";
 
 function initials(name) {
@@ -34,6 +34,7 @@ export default function PortalLayout({
   children,
 }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const avatar = initials(userName || "BloodLink");
 
   return (
@@ -60,7 +61,10 @@ export default function PortalLayout({
               to={item.to}
               end={item.to === `/${role}`}
               title={item.label}
-              className={({ isActive }) => `portal-nav-link${isActive ? " is-active" : ""}`}
+              className={({ isActive }) => {
+                const isDashboardAlias = item.to === `/${role}` && pathname === `/${role}/dashboard`;
+                return `portal-nav-link${isActive || isDashboardAlias ? " is-active" : ""}`;
+              }}
             >
               <span className="portal-nav-icon" aria-hidden="true">{item.icon}</span>
               <span>{item.label}</span>
