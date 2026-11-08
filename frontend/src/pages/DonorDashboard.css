@@ -618,6 +618,275 @@
   color: #fee2e2;
 }
 
+/* Donor dashboard content inside the shared portal shell */
+.portal-app--donor .dashboard-main {
+  padding: 0;
+  background: transparent;
+}
+
+.portal-app--donor .donor-dashboard {
+  min-height: 0;
+  display: grid;
+  gap: 18px;
+  background: transparent;
+}
+
+.portal-app--donor .stats-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 15px;
+  margin: 0;
+}
+
+.portal-app--donor .stat-card {
+  min-height: 90px;
+  gap: 12px;
+  padding: 15px;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+}
+
+.portal-app--donor .stat-card--donations {
+  background: #fff0f2;
+}
+
+.portal-app--donor .stat-card--eligibility {
+  background: #e7f8f1;
+}
+
+.portal-app--donor .stat-card--blood {
+  background: #f0ecff;
+}
+
+.portal-app--donor .stat-icon {
+  width: 43px;
+  height: 43px;
+  border-radius: 50%;
+  background: #fff;
+  font-size: 1.15rem;
+}
+
+.portal-app--donor .donation-icon {
+  color: #d81024;
+}
+
+.portal-app--donor .calendar-icon {
+  color: #148457;
+}
+
+.portal-app--donor .blood-icon {
+  color: #7753d8;
+}
+
+.portal-app--donor .stat-card p {
+  margin-bottom: 5px;
+  color: #6f7f91;
+  font-size: .68rem;
+  font-weight: 650;
+}
+
+.portal-app--donor .stat-card h2 {
+  margin: 0;
+  color: #16344f;
+  font-size: 1.06rem;
+  line-height: 1.25;
+}
+
+.portal-app--donor .dashboard-grid {
+  grid-template-columns: minmax(0, .92fr) minmax(0, 1.2fr);
+  gap: 15px;
+  margin: 0;
+}
+
+.portal-app--donor .dashboard-card {
+  min-width: 0;
+  padding: 17px;
+  border-color: #eaf0f5;
+  border-radius: 12px;
+  box-shadow: 0 5px 16px #16344f08;
+}
+
+.portal-app--donor .card-header {
+  align-items: center;
+  margin-bottom: 11px;
+}
+
+.portal-app--donor .card-header h2 {
+  color: #173651;
+  font-size: .88rem;
+}
+
+.donor-section-note {
+  color: #8092a5;
+  font-size: .63rem;
+}
+
+.donor-activity-list,
+.donor-hospital-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.donor-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 56px;
+  padding: 8px 0;
+  border-top: 1px solid #eef2f6;
+}
+
+.donor-activity-icon,
+.donor-hospital-icon {
+  display: grid;
+  flex: 0 0 29px;
+  place-items: center;
+  width: 29px;
+  height: 29px;
+  border-radius: 50%;
+  font-size: .75rem;
+  font-weight: 800;
+}
+
+.donor-activity-icon--green {
+  background: #dff5e9;
+  color: #168558;
+}
+
+.donor-activity-icon--blue {
+  background: #e4f0ff;
+  color: #3279d5;
+}
+
+.donor-activity-row > div,
+.donor-hospital-row > div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.donor-activity-row strong,
+.donor-hospital-row strong {
+  overflow: hidden;
+  color: #263d52;
+  font-size: .68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.donor-activity-row span:not(.donor-activity-icon),
+.donor-activity-row small,
+.donor-hospital-row small {
+  overflow: hidden;
+  color: #8494a6;
+  font-size: .61rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.donor-hospital-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 60px;
+  padding: 8px 0;
+  border-top: 1px solid #eef2f6;
+}
+
+.donor-hospital-icon {
+  background: #e7f1ff;
+  color: #3982d8;
+  font-size: .9rem;
+}
+
+.donor-hospital-row button {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: #fff0f2;
+  color: #cf263b;
+  font: inherit;
+  font-size: .59rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.donor-hospital-row button:hover {
+  background: #ffdee3;
+}
+
+.donor-empty {
+  margin: 12px 0 6px;
+  color: #8494a6;
+  font-size: .72rem;
+  line-height: 1.5;
+}
+
+.portal-app--donor .eligibility-banner {
+  min-height: 65px;
+  padding: 13px 17px;
+  gap: 11px;
+  border-radius: 11px;
+  background: linear-gradient(105deg, #fff0f2, #ffe7eb);
+  color: #b62035;
+}
+
+.portal-app--donor .eligibility-icon {
+  width: 34px;
+  height: 34px;
+  background: #fff;
+  color: #d81024;
+  font-size: 1rem;
+}
+
+.portal-app--donor .eligibility-banner h2 {
+  margin: 0 0 3px;
+  color: #b52237;
+  font-size: .78rem;
+}
+
+.portal-app--donor .eligibility-banner p:last-child {
+  color: #a95766;
+  font-size: .62rem;
+}
+
+.eligibility-heart {
+  margin-left: auto;
+  color: #c61934;
+  font-size: 1.25rem;
+}
+
+.portal-app--donor .view-btn {
+  padding: 7px 10px;
+  border-radius: 7px;
+  background: #fff0f2;
+  font-size: .75rem;
+}
+
+@media (max-width: 980px) {
+  .portal-app--donor .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .portal-app--donor .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-app--donor .stat-card {
+    min-height: 76px;
+  }
+
+  .portal-app--donor .dashboard-card {
+    padding: 15px;
+  }
+}
+
 .menu-heading {
   font-size: 10px;
   font-weight: 700;

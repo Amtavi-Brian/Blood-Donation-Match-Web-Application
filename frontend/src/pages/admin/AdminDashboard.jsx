@@ -1,77 +1,51 @@
 import { useEffect, useState } from "react";
-import StatusBadge from "../../componenets/ui/StatusBadge";
+import { useNavigate } from "react-router-dom";
+import PortalLayout from "../../componenets/dashboard/PortalLayout";
+import useAuth from "../../context/useAuth";
 import { getDashboardReport } from "../../services/reportService";
 import { getHospitals } from "../../services/hospitalService";
 import { getAuditLogs } from "../../services/adminService";
+import "./AdminDashboard.css";
 
 const STATS = [
-  {
-    id: "hospitals",
-    key: "total_hospitals",
-    icon: "🏥",
-    label: "Total Hospitals",
-    tone: "lavender",
-  },
-  { id: "donors", key: "total_donors", icon: "👥", label: "Total Donors", tone: "mint" },
-  { id: "alerts", key: "pending_requests", icon: "🔔", label: "Pending Requests", tone: "peach" },
+  { id: "hospitals", key: "total_hospitals", icon: "▦", label: "Total Hospitals", tone: "lavender" },
+  { id: "donors", key: "total_donors", icon: "♟", label: "Total Donors", tone: "mint" },
+  { id: "alerts", key: "pending_requests", icon: "♧", label: "Active Alerts", tone: "peach" },
 ];
 
-const css = `
-.ad {
-  --ad-navy: #0b2142;
-  --ad-red: #d0101e;
-  --ad-text: #1c2430;
-  --ad-muted: #7a8494;
-  --ad-border: #eceff4;
-  --ad-lavender: #ece9fb;
-  --ad-lavender-ink: #6c5ce7;
-  --ad-mint: #dff5ec;
-  --ad-mint-ink: #2e9e6b;
-  --ad-peach: #fdeedd;
-  --ad-peach-ink: #f08c1a;
-  padding: 24px;
-  background: #f6f7fb;
-  min-height: 100vh;
-  color: var(--ad-text);
-  display: grid;
-  gap: 20px;
-  align-content: start;
+const NAVIGATION = [
+  { label: "Dashboard", icon: "⌂", to: "/admin" },
+  { label: "Manage Hospitals", icon: "▦", to: "/admin/hospitals" },
+  { label: "Manage Users", icon: "♟", to: "/admin/users" },
+  { label: "Verify Hospitals", icon: "◉", to: "/admin/verify-hospitals" },
+  { label: "System Alerts", icon: "♧", to: "/admin/alerts" },
+  { label: "Reports", icon: "▤", to: "/admin/reports" },
+  { label: "Settings", icon: "⚙", to: "/admin/settings" },
+];
+
+function timeAgo(value) {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return "Recently";
+
+  const minutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
 }
-.ad__title { margin: 0; font-size: 22px; font-weight: 700; color: var(--ad-navy); }
-.ad__welcome { margin: 4px 0 0; font-size: 14px; color: var(--ad-muted); }
 
-.ad__stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-.ad__stat { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 14px; }
-.ad__stat--lavender { background: var(--ad-lavender); }
-.ad__stat--mint { background: var(--ad-mint); }
-.ad__stat--peach { background: var(--ad-peach); }
-.ad__stat-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: #fff; }
-.ad__stat--lavender .ad__stat-label { color: var(--ad-lavender-ink); }
-.ad__stat--mint .ad__stat-label { color: var(--ad-mint-ink); }
-.ad__stat--peach .ad__stat-label { color: var(--ad-peach-ink); }
-.ad__stat-label { display: block; font-size: 12px; font-weight: 600; }
-.ad__stat-value { display: block; font-size: 26px; font-weight: 700; color: var(--ad-navy); line-height: 1.2; }
+function activityIcon(action = "") {
+  if (action.includes("failed") || action.includes("sos")) return { icon: "♧", tone: "red" };
+  if (action.includes("hospital")) return { icon: "▦", tone: "green" };
+  if (action.includes("user") || action.includes("donor")) return { icon: "♟", tone: "blue" };
+  return { icon: "✓", tone: "green" };
+}
 
-.ad__panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-.ad__panel { background: #fff; border: 1px solid var(--ad-border); border-radius: 14px; padding: 18px; }
-.ad__panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.ad__panel-title { margin: 0; font-size: 15px; font-weight: 700; color: var(--ad-navy); }
-.ad__link { border: none; background: none; padding: 0; font-size: 12px; font-weight: 600; color: var(--ad-red); cursor: pointer; }
-
-.ad__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--ad-border); }
-.ad__row:last-child { border-bottom: none; }
-.ad__row-main { display: flex; align-items: center; gap: 12px; }
-.ad__avatar { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: #fdecec; color: var(--ad-red); font-size: 15px; }
-.ad__name { margin: 0; font-size: 14px; font-weight: 600; }
-.ad__time { margin: 2px 0 0; font-size: 12px; color: var(--ad-muted); }
-.ad__act-icon { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 14px; }
-.ad__act-icon--green { background: #dff5ec; color: var(--ad-mint-ink); }
-.ad__act-icon--red { background: #fdecec; color: var(--ad-red); }
-.ad__act-icon--blue { background: #e6f0ff; color: #2f6fe4; }
-.ad__empty { text-align: center; color: var(--ad-muted); font-size: 14px; padding: 20px 0; }
-`;
-
-function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
+export default function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [summary, setSummary] = useState(null);
   const [pendingHospitals, setPendingHospitals] = useState([]);
   const [activity, setActivity] = useState([]);
@@ -97,103 +71,82 @@ function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
   }, []);
 
   return (
-    <main className="ad">
-      <style>{css}</style>
+    <PortalLayout
+      role="admin"
+      userName={user?.full_name || "Admin"}
+      userRole="System Admin"
+      title="Admin Dashboard"
+      subtitle={`Welcome, ${user?.full_name || "Admin"}`}
+      navigation={NAVIGATION}
+      onLogout={() => {
+        logout();
+        navigate("/login", { replace: true });
+      }}
+    >
+      <div className="admin-dashboard">
+        {error && <p className="admin-feedback" role="alert">{error}</p>}
 
-      <header>
-        <h1 className="ad__title">Admin Dashboard</h1>
-        <p className="ad__welcome">Welcome, Admin</p>
-      </header>
-      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
-
-      <section className="ad__stats" aria-label="Key figures">
-        {STATS.map((s) => (
-          <article key={s.id} className={`ad__stat ad__stat--${s.tone}`}>
-            <div className="ad__stat-icon" aria-hidden="true">
-              {s.icon}
-            </div>
-            <div>
-              <span className="ad__stat-label">{s.label}</span>
-              <strong className="ad__stat-value">{summary ? summary[s.key] : "—"}</strong>
-            </div>
-          </article>
-        ))}
-      </section>
-
-      <div className="ad__panels">
-        <section className="ad__panel" aria-label="Pending hospital approvals">
-          <div className="ad__panel-head">
-            <h2 className="ad__panel-title">Pending Hospital Approvals</h2>
-            <button
-              type="button"
-              className="ad__link"
-              onClick={onViewAllApprovals}
-            >
-              View all
-            </button>
-          </div>
-
-          {pendingHospitals.length === 0 ? (
-            <p className="ad__empty">No hospitals waiting for approval.</p>
-          ) : (
-            pendingHospitals.slice(0, 5).map((h) => (
-              <div key={h.id} className="ad__row">
-                <div className="ad__row-main">
-                  <span className="ad__avatar" aria-hidden="true">
-                    🏥
-                  </span>
-                  <p className="ad__name">{h.name}</p>
-                </div>
-                <StatusBadge status="pending" label="Pending" />
+        <section className="admin-stat-grid" aria-label="Key figures">
+          {STATS.map((stat) => (
+            <article key={stat.id} className={`admin-stat admin-stat--${stat.tone}`}>
+              <span className="admin-stat-icon" aria-hidden="true">{stat.icon}</span>
+              <div>
+                <span className="admin-stat-label">{stat.label}</span>
+                <strong className="admin-stat-value">{summary ? summary[stat.key] : "—"}</strong>
               </div>
-            ))
-          )}
+            </article>
+          ))}
         </section>
 
-        <section className="ad__panel" aria-label="Recent system activity">
-          <div className="ad__panel-head">
-            <h2 className="ad__panel-title">Recent System Activity</h2>
-            <button
-              type="button"
-              className="ad__link"
-              onClick={onViewAllActivity}
-            >
-              View all
-            </button>
-          </div>
-
-          {activity.map((entry) => (
-            (() => {
-              const a = {
-                id: entry.audit_id,
-                icon: entry.action.includes("hospital") ? "🏥" : "👤",
-                tone: entry.action.includes("failed") ? "red" : "green",
-                title: entry.description,
-                time: new Date(entry.created_at).toLocaleString(),
-              };
-              return (
-            <div key={a.id} className="ad__row">
-              <div className="ad__row-main">
-                <span
-                  className={`ad__act-icon ad__act-icon--${a.tone}`}
-                  aria-hidden="true"
-                >
-                  {a.icon}
-                </span>
-                <div>
-                  <p className="ad__name">{a.title}</p>
-                  <p className="ad__time">{a.time}</p>
-                </div>
+        <section className="admin-panels">
+          <article className="admin-panel">
+            <header className="admin-panel-header">
+              <div>
+                <h2>Pending Hospital Approvals</h2>
+                <span className="admin-panel-accent" />
               </div>
-            </div>
-              );
-            })()
-          ))}
-          {activity.length === 0 && <p className="ad__empty">No recent activity is available.</p>}
+              <button type="button" onClick={onViewAllApprovals}>View all</button>
+            </header>
+            {pendingHospitals.length ? (
+              <div className="admin-approval-list">
+                {pendingHospitals.slice(0, 4).map((hospital) => (
+                  <div className="admin-approval-row" key={hospital.id}>
+                    <span className="admin-row-icon is-pending" aria-hidden="true">▦</span>
+                    <strong>{hospital.name}</strong>
+                    <span className="admin-pending-badge">Pending</span>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="admin-empty">No hospitals are waiting for approval.</p>}
+          </article>
+
+          <article className="admin-panel">
+            <header className="admin-panel-header">
+              <div>
+                <h2>Recent System Activity</h2>
+                <span className="admin-panel-accent" />
+              </div>
+              <button type="button" onClick={onViewAllActivity} aria-label="View all system activity">···</button>
+            </header>
+            {activity.length ? (
+              <div className="admin-activity-list">
+                {activity.slice(0, 4).map((entry) => {
+                  const icon = activityIcon(entry.action);
+                  return (
+                    <div className="admin-activity-row" key={entry.audit_id}>
+                      <span className={`admin-row-icon is-${icon.tone}`} aria-hidden="true">{icon.icon}</span>
+                      <div>
+                        <strong>{entry.description}</strong>
+                        <small>{timeAgo(entry.created_at)}</small>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : <p className="admin-empty">No recent system activity is available.</p>}
+          </article>
         </section>
       </div>
-    </main>
+    </PortalLayout>
   );
 }
-
-export default AdminDashboard;

@@ -10,6 +10,7 @@ import SosAlerts from './donor/SosAlerts';
 import Reminders from './donor/Reminders';
 import DonorSettings from './donor/DonorSettings';
 import ReportsAnalytics from './donor/ReportsAnalytics';
+import PortalLayout from '../componenets/dashboard/PortalLayout';
 import useAuth from '../context/useAuth';
 import { getMyDonations, getMyDonorProfile } from '../services/donorService';
 import { getHospitals } from '../services/hospitalService';
@@ -81,11 +82,11 @@ function DonorDashboard() {
   };
 
   const navigation = [
-    { name: 'Dashboard', icon: '▦' },
+    { name: 'Dashboard', icon: '⌂' },
     { name: 'My Profile', icon: '♙' },
-    { name: 'Update Availability', icon: '✓' },
-    { name: 'Donation History', icon: '♡' },
-    { name: 'SOS Alerts', icon: '⚠' },
+    { name: 'Update Availability', icon: '◉' },
+    { name: 'Donation History', icon: '▤' },
+    { name: 'SOS Alerts', icon: '♧' },
     { name: 'Reminders', icon: '◷' },
     { name: 'Settings', icon: '⚙' },
     { name: 'Reports & Analytics', icon: '▥' },
@@ -124,76 +125,24 @@ function DonorDashboard() {
   };
 
   return (
-    <div className="donor-dashboard">
-
-      {/* SIDEBAR */}
-      <aside className="sidebar">
-
-        <div className="brand">
-          <div className="brand-icon">🩸</div>
-          <span>BloodLink</span>
-        </div>
-
-        <div className="sidebar-profile">
-          <div className="profile-avatar">{donor.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</div>
-          <div>
-            <strong>{donor.name}</strong>
-            <small>Verified Donor</small>
-          </div>
-        </div>
-
-        <p className="menu-heading">MAIN MENU</p>
-
-        <nav className="sidebar-nav">
-          {navigation.map((item) => (
-            <button
-              key={item.name}
-              className={`nav-item ${activePage === item.name ? 'active' : ''}`}
-              onClick={() => handleNavigation(item.name)}
-            >
-              <span>{item.icon}</span>
-              {item.name}
-            </button>
-          ))}
-        </nav>
-
-        <button
-          className="logout-btn"
-          onClick={() => {
-            logout();
-            navigate('/login', { replace: true });
-          }}
-        >
-          <span>↪</span> Log Out
-        </button>
-
-      </aside>
-
-      {/* MAIN CONTENT */}
-      <main className="dashboard-main">
-
-        {/* HEADER */}
-        <header className="dashboard-header">
-          <div>
-            <p className="header-label">BLOODLINK / DONOR PORTAL</p>
-            <h1>Welcome back, {donor.name}!</h1>
-            <p className="header-subtitle">
-              Thank you for being a lifesaver. Your generosity makes a difference.
-            </p>
-          </div>
-
-          <div className="profile-area">
-            <button
-              className="notification"
-              onClick={() => handleNavigation('Notifications')}
-              aria-label="Notifications"
-            >
-              🔔{unreadCount > 0 ? ` ${unreadCount}` : ''}
-            </button>
-            <div className="profile-avatar">{donor.name.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</div>
-          </div>
-        </header>
-
+    <PortalLayout
+      role="donor"
+      userName={donor.name}
+      userRole="Donor"
+      title="Donor Dashboard"
+      subtitle="Thank you for being a hero!"
+      navigation={navigation.map((item) => ({
+        label: item.name,
+        icon: item.icon,
+        to: pagePaths[item.name],
+      }))}
+      notificationCount={unreadCount}
+      onLogout={() => {
+        logout();
+        navigate('/login', { replace: true });
+      }}
+    >
+      <div className="donor-dashboard">
         {loadError && <p role="alert" style={{ color: '#b91c1c' }}>{loadError}</p>}
         {notificationError && <p role="alert" style={{ color: '#b91c1c' }}>{notificationError}</p>}
         {loading && <p role="status">Loading your donor information…</p>}
@@ -202,162 +151,83 @@ function DonorDashboard() {
         {!loading && !loadError && activePage === 'Dashboard' && (
           <>
             <section className="stats-grid">
-
-              <div className="stat-card">
-                <div className="stat-icon donation-icon">🩸</div>
+              <article className="stat-card stat-card--donations">
+                <div className="stat-icon donation-icon" aria-hidden="true">♥</div>
                 <div>
                   <p>Total Donations</p>
                   <h2>{donor.donations}</h2>
-                  <span>Completed donations</span>
                 </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-icon lives-icon">💚</div>
-                <div>
-                  <p>Lives Saved</p>
-                  <h2>{donor.livesSaved}</h2>
-                  <span className="positive">Impact is not estimated by the system</span>
-                </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-icon calendar-icon">📅</div>
+              </article>
+              <article className="stat-card stat-card--eligibility">
+                <div className="stat-icon calendar-icon" aria-hidden="true">▦</div>
                 <div>
                   <p>Next Eligible Date</p>
                   <h2>{donor.nextEligibleDate}</h2>
-                  <span>Estimated date</span>
                 </div>
-              </div>
-
-              <div className="stat-card">
-                <div className="stat-icon blood-icon">🩸</div>
+              </article>
+              <article className="stat-card stat-card--blood">
+                <div className="stat-icon blood-icon" aria-hidden="true">♥</div>
                 <div>
-                  <p>Blood Group</p>
+                  <p>Blood Type</p>
                   <h2>{donor.bloodGroup}</h2>
-                  <span className="status">{donor.status} Donor</span>
                 </div>
-              </div>
-
+              </article>
             </section>
 
             <section className="dashboard-grid">
-
-              {/* RECENT DONATIONS */}
-              <div className="dashboard-card">
+              <section className="dashboard-card donor-activity">
                 <div className="card-header">
-                  <div>
-                    <h2>Recent Donations</h2>
-                    <p className="header-subtitle">Your donation journey</p>
+                  <div><h2>Recent Activity</h2></div>
+                </div>
+                {recentDonations.length ? (
+                  <div className="donor-activity-list">
+                    {recentDonations.map((donation, index) => (
+                      <article className="donor-activity-row" key={`${donation.date}-${index}`}>
+                        <span className={`donor-activity-icon donor-activity-icon--${index % 2 ? 'blue' : 'green'}`} aria-hidden="true">✓</span>
+                        <div>
+                          <strong>Donation completed</strong>
+                          <span>{donation.hospital}</span>
+                          <small>{donation.date}</small>
+                        </div>
+                      </article>
+                    ))}
                   </div>
+                ) : (
+                  <p className="donor-empty">Your verified donation activity will appear here.</p>
+                )}
+              </section>
 
-                  <button
-                    className="view-btn"
-                    onClick={() => handleNavigation('Donation History')}
-                  >
-                    View All →
-                  </button>
-                </div>
-
-                <div className="donation-list">
-                  {recentDonations.length ? recentDonations.map((donation, index) => (
-                    <div className="donation-row" key={`${donation.date}-${index}`}>
-                      <div className="date-box">
-                        <strong>{donation.day}</strong>
-                        <small>{donation.month}</small>
-                      </div>
-
-                      <div className="donation-info">
-                        <strong>Blood Donation</strong>
-                        <span>{donation.hospital}</span>
-                        <span>{donation.date}</span>
-                      </div>
-
-                      <span className="completed">Completed</span>
-                    </div>
-                  )) : <p>No verified donations have been recorded yet.</p>}
-                </div>
-              </div>
-
-              {/* QUICK ACTIONS */}
-              <div className="dashboard-card">
+              <section className="dashboard-card donor-hospitals">
                 <div className="card-header">
-                  <div>
-                    <h2>Quick Actions</h2>
-                    <p className="header-subtitle">Manage your donor account</p>
+                  <div><h2>Nearby Hospitals</h2></div>
+                  <span className="donor-section-note">{hospitals.length} available</span>
+                </div>
+                {hospitals.length ? (
+                  <div className="donor-hospital-list">
+                    {hospitals.slice(0, 3).map((hospital) => (
+                      <article className="donor-hospital-row" key={hospital.id}>
+                        <span className="donor-hospital-icon" aria-hidden="true">✚</span>
+                        <div>
+                          <strong>{hospital.name}</strong>
+                          <small>{hospital.city || 'Location available'}</small>
+                        </div>
+                        <button type="button" onClick={() => handleNavigation('SOS Alerts')}>Request Blood</button>
+                      </article>
+                    ))}
                   </div>
-                </div>
-
-                <div className="quick-actions">
-
-                  <button
-                    className="action-button"
-                    onClick={() => handleNavigation('My Profile')}
-                  >
-                    <span>👤</span>
-                    <div>
-                      <strong>My Profile</strong>
-                      <small>Update personal information</small>
-                    </div>
-                  </button>
-
-                  <button
-                    className="action-button"
-                    onClick={() => handleNavigation('Update Availability')}
-                  >
-                    <span>🟢</span>
-                    <div>
-                      <strong>Update Availability</strong>
-                      <small>Manage your donor status</small>
-                    </div>
-                  </button>
-
-                  <button
-                    className="action-button"
-                    onClick={() => handleNavigation('Reminders')}
-                  >
-                    <span>🔔</span>
-                    <div>
-                      <strong>Donation Reminders</strong>
-                      <small>Manage upcoming reminders</small>
-                    </div>
-                  </button>
-
-                  <button
-                    className="action-button primary-action"
-                    onClick={() => handleNavigation('SOS Alerts')}
-                  >
-                    <span>🚨</span>
-                    <div>
-                      <strong>View SOS Alerts</strong>
-                      <small>Help patients in urgent need</small>
-                    </div>
-                  </button>
-
-                </div>
-              </div>
-
+                ) : (
+                  <p className="donor-empty">No verified hospitals are available right now.</p>
+                )}
+              </section>
             </section>
 
-            {/* ELIGIBILITY BANNER */}
             <section className="eligibility-banner">
-              <div className="eligibility-icon">♥</div>
-
+              <span className="eligibility-icon" aria-hidden="true">♥</span>
               <div>
-                <p className="section-label">BE SOMEONE'S HERO</p>
-                <h2>Your blood can save lives!</h2>
-                <p>
-                  Keep your profile updated and stay ready to help
-                  patients who need your blood group.
-                </p>
+                <h2>Your blood can make a difference</h2>
+                <p>Keep your profile updated and be ready to help when needed.</p>
               </div>
-
-              <button
-                className="donate-now-btn"
-                onClick={() => handleNavigation('SOS Alerts')}
-              >
-                View Requests →
-              </button>
+              <span className="eligibility-heart" aria-hidden="true">♥</span>
             </section>
           </>
         )}
@@ -407,8 +277,8 @@ function DonorDashboard() {
           <span>Saving Lives Together ❤️</span>
         </footer>
 
-      </main>
-    </div>
+      </div>
+    </PortalLayout>
   );
 }
 

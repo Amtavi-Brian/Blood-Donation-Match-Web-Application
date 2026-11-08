@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import PortalLayout from "../../componenets/dashboard/PortalLayout";
+import useAuth from "../../context/useAuth";
 import {
   createHospitalDonation,
   getHospitalDonations,
@@ -15,6 +17,7 @@ import {
 import { findDonorsForRequest } from "../../services/matchingService";
 import { fetchReportSummary } from "../../services/reportService";
 import { BLOOD_TYPES } from "../../utils/constants";
+import "./HospitalPortal.css";
 
 const COMPONENTS = ["whole_blood", "red_cells", "platelets", "plasma", "cryoprecipitate"];
 
@@ -24,6 +27,8 @@ function messageFrom(error) {
 
 export default function HospitalPortal() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [hospitals, setHospitals] = useState([]);
   const [hospitalId, setHospitalId] = useState("");
   const [requests, setRequests] = useState([]);
@@ -63,6 +68,7 @@ export default function HospitalPortal() {
   const isDonationsPage = pathname.includes("/donations");
   const isAnalyticsPage = pathname.includes("/analytics");
   const isSettingsPage = pathname.includes("/settings");
+  const isDashboardPage = pathname === "/hospital" || pathname === "/hospital/" || pathname === "/hospital/dashboard";
 
   const loadData = useCallback(async (nextHospitalId = hospitalId) => {
     await Promise.resolve();
@@ -96,6 +102,34 @@ export default function HospitalPortal() {
       setLoading(false);
     }
   }, [hospitalId, isAnalyticsPage]);
+
+  const selectedHospital = hospitals.find((hospital) => String(hospital.id) === String(hospitalId));
+  const stockLevels = useMemo(() => BLOOD_TYPES.map((bloodType) => {
+    const items = stock.filter((item) => item.blood_type === bloodType);
+    return {
+      bloodType,
+      quantity: items.reduce((total, item) => total + Number(item.quantity || 0), 0),
+      threshold: items.reduce((total, item) => total + Number(item.threshold || 0), 0),
+    };
+  }), [stock]);
+  const totalStockUnits = stockLevels.reduce((total, item) => total + item.quantity, 0);
+  const lowStockCount = stockLevels.filter((item) => item.quantity <= item.threshold && item.threshold > 0).length;
+  const recentActivity = useMemo(() => [
+    ...requests.map((request) => ({
+      id: `request-${request.id}`,
+      title: `Blood request sent · ${request.blood_group}`,
+      detail: `${request.units_needed} unit${request.units_needed === 1 ? "" : "s"} · ${request.status}`,
+      date: request.created_at,
+      tone: "red",
+    })),
+    ...donations.map((donation) => ({
+      id: `donation-${donation.donation_id}`,
+      title: `Donation recorded · ${donation.blood_type}`,
+      detail: `${donation.quantity} unit${donation.quantity === 1 ? "" : "s"}`,
+      date: donation.donated_at || donation.created_at,
+      tone: "blue",
+    })),
+  ].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0, 3), [requests, donations]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => loadData(), 0);
@@ -214,41 +248,104 @@ export default function HospitalPortal() {
   }
 
   return (
-    <main style={{ maxWidth: 1100, margin: "0 auto", padding: 24 }}>
-      <header style={{ marginBottom: 24 }}>
-        <p style={{ color: "#b91c1c", fontWeight: 700 }}>BLOODLINK / HOSPITAL PORTAL</p>
-        <h1>{isSettingsPage ? "Hospital settings" : isAnalyticsPage ? "Hospital analytics" : isStockPage ? "Blood stock" : isDonorSearch ? "Donor matching" : isDonationsPage ? "Record donations" : "Blood requests"}</h1>
-        <p>Manage blood requests and inventory through the connected hospital API.</p>
-        <nav style={{ display: "flex", gap: 16, marginTop: 16 }}>
-          <Link to="/hospital">Requests</Link>
-          <Link to="/hospital/stock">Blood stock</Link>
-          <Link to="/hospital/search">Donor matches</Link>
-          <Link to="/hospital/donations">Donations</Link>
-          <Link to="/hospital/analytics">Analytics</Link>
-        </nav>
-      </header>
+    <PortalLayout
+      role="hospital"
+      userName={selectedHospital?.name || user?.full_name || "Hospital"}
+      userRole="Hospital Staff"
+      title={isDashboardPage ? "Hospital Dashboard" : isSettingsPage ? "Hospital Settings" : isAnalyticsPage ? "Analytics" : isStockPage ? "Blood Stock" : isDonorSearch ? "Donor Search" : isDonationsPage ? "Record Donation" : "Request Blood"}
+      subtitle={isDashboardPage ? `Welcome, ${selectedHospital?.name || "Hospital"}` : "Manage blood requests and inventory for your hospital."}
+      navigation={[
+        { label: "Dashboard", icon: "⌂", to: "/hospital" },
+        { label: "Request Blood", icon: "♧", to: "/hospital/requests" },
+        { label: "Donor Search", icon: "⌕", to: "/hospital/search" },
+        { label: "Blood Stock", icon: "▣", to: "/hospital/stock" },
+        { label: "Record Donation", icon: "▤", to: "/hospital/donations" },
+        { label: "Analytics", icon: "▥", to: "/hospital/analytics" },
+        { label: "Settings", icon: "⚙", to: "/hospital/settings" },
+      ]}
+      onLogout={() => {
+        logout();
+        navigate("/login", { replace: true });
+      }}
+    >
+      <div className={`hospital-portal${isDashboardPage ? " is-hospital-dashboard" : ""}`}>
+        {hospitals.length > 1 && (
+          <label className="hospital-picker">
+            <span>Hospital</span>
+            <select
+              value={hospitalId}
+              onChange={(event) => setHospitalId(event.target.value)}
+              disabled={loading}
+            >
+              {hospitals.map((hospital) => (
+                <option key={hospital.id} value={hospital.id}>{hospital.name} — {hospital.city}</option>
+              ))}
+            </select>
+          </label>
+        )}
 
-      <label style={{ display: "block", maxWidth: 460, marginBottom: 20 }}>
-        Hospital
-        <select
-          value={hospitalId}
-          onChange={(event) => {
-            setHospitalId(event.target.value);
-          }}
-          style={{ display: "block", width: "100%", padding: 10, marginTop: 6 }}
-          disabled={loading || hospitals.length === 0}
-        >
-          {hospitals.length === 0 && <option value="">No verified hospitals found</option>}
-          {hospitals.map((hospital) => (
-            <option key={hospital.id} value={hospital.id}>{hospital.name} — {hospital.city}</option>
-          ))}
-        </select>
-      </label>
+        {error && <p className="hospital-feedback is-error" role="alert">{error}</p>}
+        {notice && <p className="hospital-feedback is-success" role="status">{notice}</p>}
+        {loading ? <p className="hospital-loading" role="status">Loading hospital data…</p> : (
+        isDashboardPage ? (
+          <div className="hospital-dashboard">
+            <section className="hospital-stat-grid" aria-label="Hospital overview">
+              <article className="hospital-stat hospital-stat--requests">
+                <span className="hospital-stat-icon" aria-hidden="true">♧</span>
+                <div><p>Total Requests</p><strong>{requests.length}</strong></div>
+              </article>
+              <article className={`hospital-stat ${lowStockCount ? "hospital-stat--low" : "hospital-stat--healthy"}`}>
+                <span className="hospital-stat-icon" aria-hidden="true">{lowStockCount ? "⚠" : "✓"}</span>
+                <div><p>Blood Stock</p><strong>{lowStockCount ? "Low" : "Healthy"}</strong></div>
+              </article>
+              <article className="hospital-stat hospital-stat--donors">
+                <span className="hospital-stat-icon" aria-hidden="true">♟</span>
+                <div><p>Donors Matched</p><strong>{Object.values(matches).flat().length}</strong></div>
+              </article>
+            </section>
 
-      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
-      {notice && <p role="status" style={{ color: "#166534" }}>{notice}</p>}
-      {loading ? <p>Loading hospital data…</p> : (
-        isSettingsPage ? (
+            <section className="hospital-dashboard-grid">
+              <article className="hospital-panel hospital-stock-panel">
+                <h2>Blood Stock Levels</h2>
+                {stockLevels.map((item) => {
+                  const percentage = totalStockUnits ? Math.max(4, Math.round(item.quantity / totalStockUnits * 100)) : 0;
+                  const tone = item.quantity === 0 ? "empty" : item.quantity <= item.threshold && item.threshold > 0 ? "low" : "good";
+                  return (
+                    <div className="hospital-stock-row" key={item.bloodType}>
+                      <strong>{item.bloodType}</strong>
+                      <div className="hospital-stock-meter">
+                        <span className={`hospital-stock-value is-${tone}`}>{item.quantity} units</span>
+                        <span className="hospital-stock-track"><span className={`is-${tone}`} style={{ width: `${percentage}%` }} /></span>
+                      </div>
+                      <small>{item.quantity} units</small>
+                    </div>
+                  );
+                })}
+                <p className="hospital-stock-total">{totalStockUnits} total units · {lowStockCount} low-stock types</p>
+              </article>
+
+              <div className="hospital-dashboard-side">
+                <article className="hospital-panel hospital-actions-panel">
+                  <h2>Quick Actions</h2>
+                  <div className="hospital-quick-actions">
+                    <button className="hospital-action hospital-action--red" type="button" onClick={() => navigate("/hospital/requests")}><span aria-hidden="true">♥</span>Request Blood</button>
+                    <button className="hospital-action hospital-action--blue" type="button" onClick={() => navigate("/hospital/search")}><span aria-hidden="true">⌕</span>Search Donors</button>
+                    <button className="hospital-action hospital-action--purple" type="button" onClick={() => navigate("/hospital/stock")}><span aria-hidden="true">▣</span>Update Stock</button>
+                  </div>
+                </article>
+                <article className="hospital-panel hospital-recent-panel">
+                  <h2>Recent Activity</h2>
+                  {recentActivity.length ? recentActivity.map((item) => (
+                    <div className="hospital-activity-row" key={item.id}>
+                      <span className={`hospital-activity-icon is-${item.tone}`} aria-hidden="true">{item.tone === "red" ? "♥" : "●"}</span>
+                      <div><strong>{item.title}</strong><small>{item.detail}</small></div>
+                    </div>
+                  )) : <p className="hospital-empty">New requests and donations will appear here.</p>}
+                </article>
+              </div>
+            </section>
+          </div>
+        ) : isSettingsPage ? (
           <p>Hospital settings are not available through the current backend API.</p>
         ) : isAnalyticsPage ? (
           analytics ? (
@@ -413,6 +510,7 @@ export default function HospitalPortal() {
           </>
         )
       )}
-    </main>
+      </div>
+    </PortalLayout>
   );
 }
