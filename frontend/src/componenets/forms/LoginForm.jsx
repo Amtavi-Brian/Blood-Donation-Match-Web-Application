@@ -75,7 +75,12 @@ export default function LoginForm() {
           <input id="password" name="password" autoComplete="current-password"
                  type={showPassword ? "text" : "password"}
                  value={values.password} onChange={handleChange} />
-          <button type="button" onClick={() => setShowPassword((v) => !v)}>
+          <button
+            type="button"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-controls="password"
+            onClick={() => setShowPassword((v) => !v)}
+          >
             {showPassword ? "Hide" : "Show"}
           </button>
         </div>

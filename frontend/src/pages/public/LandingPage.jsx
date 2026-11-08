@@ -46,12 +46,12 @@ export default function LandingPage() {
             <Link className="pub-btn pub-btn-outline" to="/login">Hospital log in</Link>
           </div>
           <div className="landing-trust">
-            <span className="trust-avatars" aria-hidden="true"><i>J</i><i>A</i><i>M</i></span>
+            <span className="trust-heart" aria-hidden="true">♥</span>
             <span><strong>Every donation matters.</strong><br />Be there for someone in need.</span>
           </div>
         </div>
 
-        <div className="landing-art" aria-label="Illustration of a blood donation bag">
+        <div className="landing-art" aria-hidden="true">
           <div className="art-orbit orbit-one" />
           <div className="art-orbit orbit-two" />
           <div className="donation-card">
@@ -74,9 +74,9 @@ export default function LandingPage() {
       </section>
 
       <section className="landing-features" id="why-bloodlink">
-        <div className="landing-feature"><span className="feature-icon">⌖</span><div><strong>Find nearby donors</strong><p>Connect with people who can help.</p></div></div>
-        <div className="landing-feature"><span className="feature-icon">♡</span><div><strong>Get urgent alerts</strong><p>Reach donors when every moment counts.</p></div></div>
-        <div className="landing-feature"><span className="feature-icon">✚</span><div><strong>Support local hospitals</strong><p>Help keep blood available for care.</p></div></div>
+        <div className="landing-feature"><span className="feature-icon" aria-hidden="true">⌖</span><div><strong>Find nearby donors</strong><p>Connect with people who can help.</p></div></div>
+        <div className="landing-feature"><span className="feature-icon" aria-hidden="true">♡</span><div><strong>Get urgent alerts</strong><p>Reach donors when every moment counts.</p></div></div>
+        <div className="landing-feature"><span className="feature-icon" aria-hidden="true">✚</span><div><strong>Support local hospitals</strong><p>Help keep blood available for care.</p></div></div>
       </section>
 
       <section className="landing-how" id="how-it-works">

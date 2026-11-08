@@ -1,9 +1,9 @@
 .pub-page {
-  --red: #c8102e;
-  --red-dark: #a30d25;
-  --ink: #172b4d;
-  --muted: #657187;
-  --line: #e7eaf0;
+  --red: #b51232;
+  --red-dark: #8f102b;
+  --ink: #27212a;
+  --muted: #746e78;
+  --line: #eee5e4;
   min-height: 100vh;
   background: #fff;
   color: var(--ink);
@@ -312,4 +312,544 @@
   .landing-actions .pub-btn { width: 100%; }
   .landing-cta { margin-right: 16px; margin-left: 16px; }
   .footer-divider { display: none; }
+}
+
+/* Refined public-facing visual system */
+.landing-page {
+  background:
+    radial-gradient(ellipse at 86% 16%, #f8e9e3 0, transparent 31rem),
+    linear-gradient(180deg, #fffdfa 0%, #fff 58%);
+}
+
+.landing-header {
+  max-width: 1320px;
+  padding-top: 21px;
+  padding-bottom: 21px;
+}
+
+.pub-brand {
+  gap: 10px;
+  font-size: 1.38rem;
+}
+
+.pub-brand-mark {
+  width: 29px;
+  height: 34px;
+}
+
+.landing-nav > a:not(.pub-btn) {
+  transition: color .18s ease;
+}
+
+.landing-nav .pub-btn {
+  border-radius: 999px;
+}
+
+.landing-nav .pub-btn-outline {
+  border-color: #e9d8d8;
+}
+
+.pub-btn {
+  border-radius: 12px;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.pub-btn:focus-visible,
+.landing-nav a:focus-visible,
+.landing-footer a:focus-visible,
+.auth-home:focus-visible {
+  outline: 3px solid #b5123266;
+  outline-offset: 3px;
+}
+
+.pub-hero.landing-hero {
+  max-width: 1320px;
+  min-height: 590px;
+  padding-top: 55px;
+  padding-bottom: 70px;
+}
+
+.landing-eyebrow {
+  letter-spacing: .14em;
+}
+
+.landing-copy h1 {
+  max-width: 650px;
+  font-size: clamp(3.6rem, 6.5vw, 5.65rem);
+  letter-spacing: -.082em;
+}
+
+.landing-copy h1 span {
+  display: inline-block;
+  color: var(--red);
+}
+
+.landing-intro {
+  max-width: 470px;
+  font-size: 1.08rem;
+  line-height: 1.8;
+}
+
+.landing-actions .pub-btn {
+  min-height: 53px;
+  padding-right: 23px;
+  padding-left: 23px;
+  border-radius: 999px;
+}
+
+.landing-actions .pub-btn-primary {
+  box-shadow: 0 10px 24px #b5123230;
+}
+
+.landing-trust {
+  margin-top: 32px;
+}
+
+.trust-heart {
+  display: grid;
+  flex: 0 0 39px;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  border: 1px solid #f1d6d5;
+  border-radius: 50%;
+  background: #fff3ef;
+  color: var(--red);
+  font-size: 1.1rem;
+}
+
+.landing-art {
+  min-height: 450px;
+}
+
+.landing-art::before {
+  width: min(100%, 450px);
+  background: radial-gradient(circle at 50% 42%, #fff8f2 0, #f8e4de 64%, #f2d2ce 100%);
+  box-shadow: inset 0 0 0 1px #fff9f3;
+}
+
+.art-orbit {
+  border-color: #d99996;
+  opacity: .63;
+}
+
+.orbit-two {
+  opacity: .34;
+}
+
+.donation-card {
+  border: 1px solid #f3d9d4;
+  border-radius: 26px;
+  box-shadow: 0 32px 80px #65303b24, 0 4px 12px #65303b0c;
+}
+
+.floating-note {
+  right: -7px;
+  bottom: 52px;
+  border-radius: 16px;
+  box-shadow: 0 16px 38px #42283116;
+}
+
+.landing-features {
+  position: relative;
+  z-index: 1;
+  max-width: 1190px;
+  gap: 12px;
+  padding: 18px;
+  border: 0;
+  border-radius: 22px;
+  background: #351c27;
+  box-shadow: 0 24px 60px #351c271a;
+}
+
+.landing-feature {
+  gap: 14px;
+  min-height: 68px;
+  padding: 8px 17px;
+}
+
+.feature-icon {
+  border: 1px solid #ffffff20;
+  border-radius: 15px;
+  background: #ffffff12;
+  color: #ffd9d8;
+}
+
+.landing-feature strong {
+  color: #fffaf8;
+  font-size: .88rem;
+}
+
+.landing-feature p {
+  color: #dec9cf;
+  font-size: .75rem;
+  line-height: 1.5;
+}
+
+.landing-how {
+  max-width: 1190px;
+  padding-top: 105px;
+  padding-bottom: 88px;
+}
+
+.landing-how h2 {
+  font-size: clamp(1.9rem, 3.2vw, 2.7rem);
+}
+
+.pub-step.landing-step {
+  position: relative;
+  min-height: 195px;
+  padding: 29px 27px;
+  border-color: #f0e9e6;
+  border-radius: 19px;
+  background: linear-gradient(145deg, #fff 0%, #fffaf7 100%);
+  box-shadow: 0 12px 32px #432b2508;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.pub-step.landing-step:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 38px #432b2512;
+}
+
+.landing-step .pub-step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 39px;
+  height: 39px;
+  margin-bottom: 18px;
+  border-radius: 13px;
+  background: #fff0ed;
+  color: var(--red);
+  font-size: .78rem;
+  letter-spacing: .02em;
+}
+
+.landing-step h3 {
+  margin-bottom: 8px;
+  font-size: 1.04rem;
+}
+
+.landing-cta {
+  position: relative;
+  overflow: hidden;
+  max-width: 1190px;
+  min-height: 176px;
+  margin-bottom: 76px;
+  padding: 38px 45px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 90% 15%, #ffffff18 0 8rem, transparent 8.1rem),
+    linear-gradient(115deg, #541e31, #8f1835 68%, #a6223b);
+  box-shadow: 0 22px 50px #571e3026;
+}
+
+.landing-cta::after {
+  position: absolute;
+  right: 12%;
+  bottom: -96px;
+  width: 190px;
+  height: 190px;
+  border: 1px solid #ffffff20;
+  border-radius: 50%;
+  content: "";
+  pointer-events: none;
+}
+
+.landing-cta .landing-eyebrow {
+  color: #f4c8c9;
+}
+
+.landing-cta h2 {
+  color: #fffaf8;
+  font-size: clamp(1.5rem, 2.5vw, 2.05rem);
+  line-height: 1.25;
+}
+
+.landing-cta .pub-btn-primary {
+  z-index: 1;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: none;
+  color: #77203a;
+}
+
+.landing-cta .pub-btn-primary:hover {
+  background: #fff1ed;
+}
+
+.pub-page .landing-cta a.pub-btn-primary {
+  color: #77203a;
+}
+
+.landing-footer {
+  max-width: 1320px;
+  border-color: #f0e8e4;
+}
+
+.auth-page {
+  background:
+    radial-gradient(ellipse at 18% 16%, #f8e4df 0, transparent 26rem),
+    linear-gradient(135deg, #fffdfa, #fff4f3);
+}
+
+.pub-card.auth-card {
+  border-color: #f0e4e0;
+  border-radius: 22px;
+  box-shadow: 0 26px 70px #42282b12;
+}
+
+.auth-card .pub-btn-primary {
+  border-radius: 11px;
+}
+
+@media (max-width: 900px) {
+  .pub-hero.landing-hero {
+    min-height: 540px;
+  }
+
+  .landing-features,
+  .landing-how,
+  .landing-cta {
+    margin-right: 24px;
+    margin-left: 24px;
+  }
+
+  .landing-how {
+    padding-top: 80px;
+  }
+}
+
+@media (max-width: 680px) {
+  .landing-header {
+    padding: 15px 20px;
+  }
+
+  .pub-brand {
+    font-size: 1.2rem;
+  }
+
+  .pub-brand-mark {
+    width: 25px;
+    height: 30px;
+  }
+
+  .pub-hero.landing-hero {
+    padding-top: 47px;
+  }
+
+  .landing-copy h1 {
+    font-size: clamp(3.25rem, 14vw, 4.65rem);
+  }
+
+  .landing-art {
+    min-height: 330px;
+  }
+
+  .landing-art::before {
+    width: 310px;
+  }
+
+  .floating-note {
+    right: 0;
+    bottom: 31px;
+  }
+
+  .landing-features {
+    gap: 4px;
+    padding: 14px;
+    border-radius: 18px;
+  }
+
+  .landing-feature {
+    min-height: 62px;
+  }
+
+  .landing-how {
+    padding-top: 69px;
+  }
+
+  .pub-step.landing-step {
+    min-height: 0;
+    padding: 23px;
+  }
+
+  .landing-cta {
+    min-height: 0;
+    border-radius: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pub-btn,
+  .landing-nav > a:not(.pub-btn),
+  .pub-step.landing-step {
+    transition: none;
+  }
+}
+
+/* Auth forms */
+.auth-card form {
+  width: 100%;
+}
+
+.auth-card .pub-field {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 7px;
+  margin-bottom: 16px;
+}
+
+.auth-card .pub-field label {
+  display: block;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.auth-card .pub-field input,
+.auth-card .pub-field select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  box-sizing: border-box;
+  margin: 0;
+  background-color: #fff;
+}
+
+.auth-card .pub-field select {
+  cursor: pointer;
+}
+
+.auth-card .pub-password {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.auth-card .pub-password input {
+  padding-right: 68px;
+}
+
+.auth-card .pub-password button {
+  position: absolute;
+  top: 50%;
+  right: 9px;
+  display: grid;
+  min-width: 44px;
+  min-height: 34px;
+  place-items: center;
+  padding: 0 7px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #77717a;
+  font: inherit;
+  font-size: .73rem;
+  font-weight: 700;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.auth-card .pub-password button:hover {
+  background: #fff1ef;
+  color: var(--red);
+}
+
+.auth-card .pub-password button:focus-visible {
+  outline: 2px solid #b5123266;
+  outline-offset: 1px;
+}
+
+.auth-card .pub-field-error {
+  margin: 0;
+  color: #b4233c;
+  font-size: .74rem;
+  line-height: 1.4;
+}
+
+.auth-card .pub-has-error input,
+.auth-card .pub-has-error select {
+  border-color: #c43a50;
+}
+
+.auth-card .pub-register-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+  row-gap: 0;
+}
+
+.auth-card .pub-register-form > .pub-field:nth-of-type(5),
+.auth-card .pub-register-form > .pub-btn,
+.auth-card .pub-register-form > .pub-location-msg,
+.auth-card .pub-register-form > .pub-form-error,
+.auth-card .pub-register-form > .pub-note,
+.auth-card .pub-register-form > .pub-switch {
+  grid-column: 1 / -1;
+}
+
+.auth-card .pub-register-form > .pub-btn-ghost {
+  margin-top: 1px;
+}
+
+.auth-card .pub-register-form > .pub-location-msg {
+  min-height: 18px;
+  margin: 7px 0 13px;
+  line-height: 1.4;
+}
+
+.auth-card .pub-btn {
+  min-height: 49px;
+  border-radius: 11px;
+  font-weight: 750;
+}
+
+.auth-card .pub-btn-primary {
+  box-shadow: 0 9px 20px #b5123224;
+}
+
+.auth-card .pub-btn-ghost {
+  border-color: #eee2df;
+  background: #fffaf8;
+}
+
+.auth-card .pub-btn-ghost:hover {
+  background: #fff2ef;
+}
+
+.pub-card.register-card {
+  width: min(100%, 580px);
+  padding: 29px 38px 28px;
+}
+
+.register-card .auth-heading {
+  margin-bottom: 22px;
+}
+
+.auth-card .pub-switch {
+  text-align: center;
+  line-height: 1.55;
+}
+
+@media (max-width: 560px) {
+  .auth-card .pub-register-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .auth-card .pub-register-form > .pub-field,
+  .auth-card .pub-register-form > .pub-btn,
+  .auth-card .pub-register-form > .pub-location-msg,
+  .auth-card .pub-register-form > .pub-form-error,
+  .auth-card .pub-register-form > .pub-note,
+  .auth-card .pub-register-form > .pub-switch {
+    grid-column: 1;
+  }
+
+  .pub-card.register-card {
+    padding-right: 24px;
+    padding-left: 24px;
+  }
 }

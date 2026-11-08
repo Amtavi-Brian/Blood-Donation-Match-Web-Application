@@ -121,7 +121,7 @@ export default function DonorRegisterForm() {
 
   if (awaitingVerification) {
     return (
-      <form onSubmit={handleVerifyEmail} noValidate>
+      <form className="pub-verify-form" onSubmit={handleVerifyEmail} noValidate>
         <p className="pub-note">
           Enter the 6-digit verification code sent to {values.email}.
         </p>
@@ -154,7 +154,7 @@ export default function DonorRegisterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form className="pub-register-form" onSubmit={handleSubmit} noValidate>
       <div className={`pub-field ${errors.fullName ? "pub-has-error" : ""}`}>
         <label htmlFor="fullName">Full name</label>
         <input id="fullName" name="fullName" autoComplete="name"
@@ -182,7 +182,12 @@ export default function DonorRegisterForm() {
           <input id="password" name="password" autoComplete="new-password"
                  type={showPassword ? "text" : "password"}
                  value={values.password} onChange={handleChange} />
-          <button type="button" onClick={() => setShowPassword((v) => !v)}>
+          <button
+            type="button"
+            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-controls="password"
+            onClick={() => setShowPassword((v) => !v)}
+          >
             {showPassword ? "Hide" : "Show"}
           </button>
         </div>
