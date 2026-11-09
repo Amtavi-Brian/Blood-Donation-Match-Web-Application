@@ -143,7 +143,7 @@ function DonationHistory() {
   };
 
   return (
-    <div style={styles.page}>
+    <div className="donor-page" style={styles.page}>
       <h1 style={styles.heading}>Donation History</h1>
       <p style={styles.subtitle}>
         Keep track of your previous blood donations and their status.

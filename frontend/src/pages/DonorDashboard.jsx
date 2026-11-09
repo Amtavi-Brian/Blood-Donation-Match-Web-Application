@@ -28,12 +28,18 @@ function DonorDashboard() {
   const [loadError, setLoadError] = useState('');
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationError, setNotificationError] = useState('');
+  const isDashboardRoute = ['/donor', '/donor/dashboard'].includes(
+    location.pathname.replace(/\/+$/, '') || '/donor',
+  );
 
   useEffect(() => {
+    if (!isDashboardRoute) return undefined;
+
     let active = true;
     Promise.all([getMyDonorProfile(), getMyDonations(), getHospitals()])
       .then(([donorProfile, donationRecords, hospitalList]) => {
         if (!active) return;
+        setLoadError('');
         setProfile(donorProfile);
         setDonations(donationRecords);
         setHospitals(hospitalList);
@@ -45,7 +51,7 @@ function DonorDashboard() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, []);
+  }, [isDashboardRoute]);
 
   useEffect(() => {
     let active = true;
@@ -76,9 +82,9 @@ function DonorDashboard() {
     name: user?.full_name || 'Donor',
     bloodGroup: profile?.blood_group || 'Not set',
     donations: donations.filter((item) => item.verified).length,
-    livesSaved: '—',
-    nextEligibleDate: 'Check with your hospital',
-    status: profile?.available_to_contact ? 'Available' : 'Unavailable',
+    status: profile?.available_to_contact && profile?.consent_to_contact
+      ? 'Available'
+      : 'Unavailable',
   };
 
   const navigation = [
@@ -91,6 +97,16 @@ function DonorDashboard() {
     { name: 'Settings', icon: '⚙' },
     { name: 'Reports & Analytics', icon: '▥' },
   ];
+  const pageSubtitles = {
+    Dashboard: 'Your donor profile, donation records, and current availability at a glance.',
+    'My Profile': 'Review and update your donor profile details.',
+    'Update Availability': 'Control whether hospitals may include you in donor matching.',
+    'Donation History': 'Review donation records and their verification status.',
+    'SOS Alerts': 'Browse active requests from verified hospitals.',
+    Reminders: 'Create and manage reminders saved to your account.',
+    Settings: 'Manage your location-sharing privacy preferences.',
+    'Reports & Analytics': 'Explore trends calculated from your recorded donations.',
+  };
 
   const recentDonations = useMemo(() => donations
     .filter((donation) => donation.verified)
@@ -129,8 +145,8 @@ function DonorDashboard() {
       role="donor"
       userName={donor.name}
       userRole="Donor"
-      title="Donor Dashboard"
-      subtitle="Thank you for being a hero!"
+      title={activePage === 'Dashboard' ? 'Donor Dashboard' : activePage}
+      subtitle={pageSubtitles[activePage] || 'Manage your donor account.'}
       navigation={navigation.map((item) => ({
         label: item.name,
         icon: item.icon,
@@ -145,24 +161,24 @@ function DonorDashboard() {
       <div className="donor-dashboard">
         {loadError && <p role="alert" style={{ color: '#b91c1c' }}>{loadError}</p>}
         {notificationError && <p role="alert" style={{ color: '#b91c1c' }}>{notificationError}</p>}
-        {loading && <p role="status">Loading your donor information…</p>}
+        {isDashboardRoute && loading && <p role="status">Loading your donor information…</p>}
 
         {/* DASHBOARD PAGE */}
-        {!loading && !loadError && activePage === 'Dashboard' && (
+        {!loading && !loadError && isDashboardRoute && activePage === 'Dashboard' && (
           <>
             <section className="stats-grid">
               <article className="stat-card stat-card--donations">
                 <div className="stat-icon donation-icon" aria-hidden="true">♥</div>
                 <div>
-                  <p>Total Donations</p>
+                  <p>Verified Donations</p>
                   <h2>{donor.donations}</h2>
                 </div>
               </article>
               <article className="stat-card stat-card--eligibility">
                 <div className="stat-icon calendar-icon" aria-hidden="true">▦</div>
                 <div>
-                  <p>Next Eligible Date</p>
-                  <h2>{donor.nextEligibleDate}</h2>
+                  <p>Matching Availability</p>
+                  <h2>{donor.status}</h2>
                 </div>
               </article>
               <article className="stat-card stat-card--blood">
@@ -199,7 +215,7 @@ function DonorDashboard() {
 
               <section className="dashboard-card donor-hospitals">
                 <div className="card-header">
-                  <div><h2>Nearby Hospitals</h2></div>
+                  <div><h2>Verified Hospitals</h2></div>
                   <span className="donor-section-note">{hospitals.length} available</span>
                 </div>
                 {hospitals.length ? (
@@ -211,7 +227,7 @@ function DonorDashboard() {
                           <strong>{hospital.name}</strong>
                           <small>{hospital.city || 'Location available'}</small>
                         </div>
-                        <button type="button" onClick={() => handleNavigation('SOS Alerts')}>Request Blood</button>
+                        <button type="button" onClick={() => handleNavigation('SOS Alerts')}>View requests</button>
                       </article>
                     ))}
                   </div>

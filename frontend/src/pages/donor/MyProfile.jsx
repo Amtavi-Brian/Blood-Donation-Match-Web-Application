@@ -9,6 +9,7 @@ function MyProfile() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [savedProfile, setSavedProfile] = useState(null);
 
   const [profile, setProfile] = useState({
     fullName: '',
@@ -25,7 +26,7 @@ function MyProfile() {
     Promise.all([getCurrentUser(), getMyDonorProfile()])
       .then(([user, donor]) => {
         if (!active) return;
-        setProfile({
+        const loadedProfile = {
           fullName: user.full_name,
           email: user.email,
           phone: user.phone_number || '',
@@ -33,7 +34,9 @@ function MyProfile() {
           location: donor.city || '',
           availability: donor.available_to_contact ? 'Available' : 'Unavailable',
           verified: user.is_email_verified ? 'Email verified' : 'Email not verified',
-        });
+        };
+        setProfile(loadedProfile);
+        setSavedProfile(loadedProfile);
       })
       .catch((loadError) => {
         if (active) setError(loadError.message || 'Unable to load your profile.');
@@ -62,6 +65,12 @@ function MyProfile() {
         available_to_contact: profile.availability === 'Available',
       });
       setProfile((current) => ({
+        ...current,
+        bloodGroup: donor.blood_group,
+        location: donor.city || '',
+        availability: donor.available_to_contact ? 'Available' : 'Unavailable',
+      }));
+      setSavedProfile((current) => ({
         ...current,
         bloodGroup: donor.blood_group,
         location: donor.city || '',
@@ -118,15 +127,15 @@ function MyProfile() {
         name={name}
         value={profile[name]}
         onChange={handleChange}
-        disabled={!editing || !['location'].includes(name)}
+        disabled={!editing || saving || !['location'].includes(name)}
         style={inputStyle(editing && name === 'location')}
-        required
+        required={name !== 'location'}
       />
     </div>
   );
 
   return (
-    <div style={{
+    <div className="donor-page" style={{
       minHeight: '100vh',
       background: '#f8f9fc',
       padding: '30px',
@@ -164,9 +173,13 @@ function MyProfile() {
       {error && <p role="alert" style={{ color: '#b91c1c', marginBottom: 16 }}>{error}</p>}
 
         <button
+          type="button"
+          disabled={loading || saving}
           onClick={() => {
             if (editing) {
+              setProfile(savedProfile);
               setEditing(false);
+              setSaved(false);
             } else {
               setEditing(true);
             }
@@ -299,7 +312,7 @@ function MyProfile() {
                 name="bloodGroup"
                 value={profile.bloodGroup}
                 onChange={handleChange}
-                disabled={!editing}
+                disabled={!editing || saving}
                 style={inputStyle(editing)}
               >
                 {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(group => (
@@ -315,7 +328,7 @@ function MyProfile() {
                 name="availability"
                 value={profile.availability}
                 onChange={handleChange}
-                disabled={!editing}
+                disabled={!editing || saving}
                 style={inputStyle(editing)}
               >
                 <option>Available</option>
@@ -346,7 +359,12 @@ function MyProfile() {
           }}>
             <button
               type="button"
-              onClick={() => setEditing(false)}
+              disabled={saving}
+              onClick={() => {
+                setProfile(savedProfile);
+                setEditing(false);
+                setSaved(false);
+              }}
               style={{
                 padding: '12px 20px',
                 border: '2px solid #64748b',

@@ -83,7 +83,7 @@ function ReportsAnalytics() {
 
   if (error && !loading) {
     return (
-      <div className="reports-page">
+      <div className="reports-page donor-page">
         <h2>My Donation History</h2>
         <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>
       </div>
@@ -91,7 +91,7 @@ function ReportsAnalytics() {
   }
 
   return (
-    <div className="reports-page">
+    <div className="reports-page donor-page">
       <div className="reports-heading">
         <div>
           <h2>My Donation History</h2>

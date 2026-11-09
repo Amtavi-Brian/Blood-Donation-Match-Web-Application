@@ -7,6 +7,11 @@ function Reminders() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [reminderForm, setReminderForm] = useState({
+    title: '',
+    scheduled_at: '',
+  });
 
   const loadReminders = useCallback(async () => {
     await Promise.resolve();
@@ -46,24 +51,27 @@ function Reminders() {
     (reminder) => reminder.status === 'pending'
   ).length;
 
-  const addReminder = async () => {
-    const title = prompt('Enter reminder title:');
-    if (!title || !title.trim()) return;
-    const date = prompt('Enter reminder date (YYYY-MM-DD):');
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      alert('Please enter a valid date in YYYY-MM-DD format.');
+  const addReminder = async (event) => {
+    event.preventDefault();
+    if (new Date(reminderForm.scheduled_at) <= new Date()) {
+      setError('Choose a future date and time for your reminder.');
       return;
     }
-
     setBusy(true);
     setError('');
+    setNotice('');
     try {
       await createReminder({
-        title: title.trim(),
+        title: reminderForm.title.trim(),
         message: 'Personal reminder added by you.',
         reminder_type: 'personal',
-        scheduled_at: `${date}T09:00:00Z`,
+        scheduled_at: new Date(reminderForm.scheduled_at).toISOString(),
       });
+      setReminderForm({
+        title: '',
+        scheduled_at: '',
+      });
+      setNotice('Reminder saved to your account.');
       await loadReminders();
     } catch (createError) {
       setError(createError.message || 'Unable to create this reminder.');
@@ -131,7 +139,7 @@ function Reminders() {
   };
 
   return (
-    <div style={styles.page}>
+    <div className="donor-page" style={styles.page}>
       <h1 style={styles.heading}>🔔 My Reminders</h1>
 
       <p style={styles.subtitle}>
@@ -166,22 +174,49 @@ function Reminders() {
       </div>
 
       {/* REMINDER LIST */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px',
-        marginBottom: '18px',
-      }}>
-        <h2 style={{ fontSize: '20px' }}>Your Reminders</h2>
-
-        <button style={styles.button} onClick={addReminder} disabled={busy}>
-          + Add Reminder
-        </button>
-      </div>
+      <form onSubmit={addReminder} style={{ ...styles.card, marginBottom: '22px' }}>
+        <h2 style={{ marginTop: 0 }}>Add a personal reminder</h2>
+        <p style={{ color: '#64748b', marginTop: 0 }}>
+          Choose a future date and time. The reminder will be stored in your account.
+        </p>
+        <div className="donor-reminder-form">
+          <label>
+            Reminder title
+            <input
+              required
+              minLength="3"
+              maxLength="150"
+              value={reminderForm.title}
+              onChange={(event) => setReminderForm((current) => ({
+                ...current,
+                title: event.target.value,
+              }))}
+              disabled={busy}
+              placeholder="For example, check donation eligibility"
+            />
+          </label>
+          <label>
+            Date and time
+            <input
+              type="datetime-local"
+              required
+              value={reminderForm.scheduled_at}
+              onChange={(event) => setReminderForm((current) => ({
+                ...current,
+                scheduled_at: event.target.value,
+              }))}
+              disabled={busy}
+            />
+          </label>
+          <button type="submit" style={styles.button} disabled={busy || loading}>
+            {busy ? 'Saving…' : 'Add reminder'}
+          </button>
+        </div>
+      </form>
       {error && <p role="alert" style={{ color: '#b91c1c' }}>{error}</p>}
+      {notice && <p role="status" style={{ color: '#15803d' }}>{notice}</p>}
       {loading && <p role="status">Loading reminders…</p>}
+      <h2>Your Reminders</h2>
 
       {!loading && reminders.map((reminder) => (
         <div key={reminder.reminder_id} style={{

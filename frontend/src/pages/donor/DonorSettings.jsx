@@ -86,7 +86,7 @@ export default function DonorSettings() {
   const sharingLocation = Boolean(profile?.consent_to_share_location);
 
   return (
-    <main style={pageStyle}>
+    <main className="donor-page" style={pageStyle}>
       <h1 style={{ color: "#0b2142", marginBottom: 8 }}>Donor settings</h1>
       <p style={{ color: "#6b7280", marginBottom: 25 }}>
         Manage the privacy setting that is available for your donor account.
@@ -112,7 +112,7 @@ export default function DonorSettings() {
             <button
               type="button"
               onClick={() => setLocationSharing(!sharingLocation)}
-              disabled={saving}
+              disabled={saving || loading || !profile}
               style={{
                 background: sharingLocation ? "#fff" : "#991b1b",
                 color: sharingLocation ? "#991b1b" : "#fff",

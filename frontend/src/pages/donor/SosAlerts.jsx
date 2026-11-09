@@ -133,7 +133,7 @@ function SosAlerts() {
   };
 
   return (
-    <div style={styles.page}>
+    <div className="donor-page" style={styles.page}>
       <h1 style={styles.heading}>🚨 SOS Blood Requests</h1>
 
       <p style={styles.subtitle}>
@@ -306,9 +306,9 @@ function SosAlerts() {
         color: '#9ca3af',
         marginTop: '25px',
       }}>
-        Demo data only. Responding records your interest locally;
-        it does not contact a hospital or confirm donor eligibility.
-        Always follow the hospital's screening and compatibility checks.
+        These requests and hospital contact details come from verified
+        hospital records. Calling a hospital does not confirm donor
+        eligibility; follow the hospital's screening and compatibility checks.
       </p>
     </div>
   );

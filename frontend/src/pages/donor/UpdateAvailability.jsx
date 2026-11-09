@@ -75,7 +75,7 @@ function UpdateAvailability() {
   };
 
   return (
-    <div style={{
+    <div className="donor-page" style={{
       minHeight: '100vh',
       background: '#f8f9fc',
       padding: '30px',
@@ -159,13 +159,16 @@ function UpdateAvailability() {
                 marginTop: '7px',
               }}>
                 {availability
-                  ? 'Hospitals may identify you for matching.'
+                  ? contactConsent
+                    ? 'Hospitals may consider your profile for matching.'
+                    : 'Enable contact consent below to be considered for matching.'
                   : 'You will not be considered for new donor matches.'}
               </p>
             </div>
 
             <button
               type="button"
+              disabled={loading || saving}
               onClick={() => {
                 setAvailability(!availability);
                 setSaved(false);
@@ -206,12 +209,12 @@ function UpdateAvailability() {
               id="availability-location"
               style={inputStyle}
               value={location}
+              disabled={loading || saving}
               onChange={(e) => {
                 setLocation(e.target.value);
                 setSaved(false);
               }}
               placeholder="Enter your location"
-              required
             />
           </div>
 
@@ -267,6 +270,7 @@ function UpdateAvailability() {
               <input
                 type="checkbox"
                 checked={item.value}
+                disabled={loading || saving}
                 onChange={(e) => {
                   item.setter(e.target.checked);
                   setSaved(false);
