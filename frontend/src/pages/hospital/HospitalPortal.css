@@ -20,9 +20,9 @@
   max-width: min(460px, 70vw);
   min-height: 38px;
   padding: 8px 11px;
-  border: 1px solid #dfe8ef;
+  border: 1.5px solid #718096;
   border-radius: 8px;
-  background: #fff;
+  background: #f0f7ff;
   color: #193550;
   font: inherit;
 }
@@ -346,14 +346,37 @@
 .hospital-portal select,
 .hospital-portal textarea {
   max-width: 100%;
-  min-height: 38px;
-  padding: 8px 10px;
-  border: 1px solid #dfe8ef;
-  border-radius: 7px;
-  background: #fff;
+  min-height: 42px;
+  padding: 9px 11px;
+  border: 1.5px solid #718096;
+  border-radius: 9px;
+  background: #f0f7ff;
   color: #193550;
   font: inherit;
   font-size: .78rem;
+}
+
+.hospital-portal input::placeholder,
+.hospital-portal textarea::placeholder {
+  color: #596579;
+  opacity: 1;
+}
+
+.hospital-portal input:focus,
+.hospital-portal select:focus,
+.hospital-portal textarea:focus {
+  border-color: #1d4ed8;
+  outline: 3px solid #1d4ed833;
+  outline-offset: 1px;
+  background: #fff;
+}
+
+.hospital-portal input:disabled,
+.hospital-portal select:disabled,
+.hospital-portal textarea:disabled {
+  border-color: #a1aab8;
+  background: #e9edf2;
+  color: #39475a;
 }
 
 .hospital-portal button:not(.hospital-action) {
@@ -361,6 +384,69 @@
   font: inherit;
   font-size: .75rem;
   cursor: pointer;
+}
+
+.hospital-portal button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.hospital-request-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.hospital-request-actions .is-danger {
+  border: 1px solid #b42336;
+  background: #fff0f2;
+  color: #a2192c;
+}
+
+.hospital-batches {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f4f8fc;
+  color: #34516a;
+  font-size: .75rem;
+}
+
+.hospital-batches ul {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.hospital-settings dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 0 0 20px;
+}
+
+.hospital-settings dl > div {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e8eff5;
+  border-radius: 8px;
+  background: #f7faff;
+}
+
+.hospital-settings dt {
+  margin-bottom: 5px;
+  color: #60778d;
+  font-size: .7rem;
+  font-weight: 700;
+}
+
+.hospital-settings dd {
+  margin: 0;
+  color: #193550;
+  font-size: .8rem;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {

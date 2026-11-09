@@ -76,33 +76,33 @@ function MyProfile() {
     }
   };
 
-  const inputStyle = {
+  const inputStyle = (isEditable) => ({
     width: '100%',
-    padding: '12px',
-    border: '1px solid #e5e7eb',
+    minHeight: '44px',
+    padding: '10px 12px',
+    border: `2px solid ${isEditable ? '#64748b' : '#a1aab8'}`,
     borderRadius: '8px',
     fontSize: '13px',
     boxSizing: 'border-box',
-    background: editing ? '#ffffff' : '#f9fafb',
+    background: isEditable ? '#eff6ff' : '#e9edf2',
     color: '#172033',
-    outlineColor: '#b91c1c',
-  };
+  });
 
   const labelStyle = {
     display: 'block',
     fontSize: '12px',
     fontWeight: '600',
-    color: '#374151',
+    color: '#263449',
     marginBottom: '8px',
   };
 
   const fieldStyle = {
-    marginBottom: '22px',
+    marginBottom: '12px',
   };
 
   const cardStyle = {
     background: '#ffffff',
-    border: '1px solid #eceef2',
+    border: '1px solid #cbd2dc',
     borderRadius: '14px',
     padding: '25px',
     boxShadow: '0 3px 12px rgba(31,41,55,0.04)',
@@ -111,14 +111,15 @@ function MyProfile() {
 
   const field = (label, name, type = 'text') => (
     <div style={fieldStyle}>
-      <label style={labelStyle}>{label}</label>
+      <label htmlFor={`profile-${name}`} style={labelStyle}>{label}</label>
       <input
+        id={`profile-${name}`}
         type={type}
         name={name}
         value={profile[name]}
         onChange={handleChange}
         disabled={!editing || !['location'].includes(name)}
-        style={inputStyle}
+        style={inputStyle(editing && name === 'location')}
         required
       />
     </div>
@@ -154,7 +155,7 @@ function MyProfile() {
           <h1 style={{ fontSize: '28px', margin: '8px 0' }}>
             My Profile
           </h1>
-          <p style={{ color: '#6b7280', fontSize: '13px' }}>
+          <p style={{ color: '#4b5563', fontSize: '13px' }}>
             Manage your personal information and donor details.
           </p>
         </div>
@@ -261,14 +262,14 @@ function MyProfile() {
           <h2 style={{ fontSize: '17px', marginBottom: '8px' }}>
             Personal Information
           </h2>
-          <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '25px' }}>
+          <p style={{ color: '#4b5563', fontSize: '12px', marginBottom: '25px' }}>
             Your basic personal details.
           </p>
 
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '0 25px',
+            gap: '10px 25px',
           }}>
             {field('Full Name', 'fullName')}
             {field('Email Address', 'email', 'email')}
@@ -282,23 +283,24 @@ function MyProfile() {
           <h2 style={{ fontSize: '17px', marginBottom: '8px' }}>
             Donor Information
           </h2>
-          <p style={{ color: '#9ca3af', fontSize: '12px', marginBottom: '25px' }}>
+          <p style={{ color: '#4b5563', fontSize: '12px', marginBottom: '25px' }}>
             Your blood donation information.
           </p>
 
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '0 25px',
+            gap: '10px 25px',
           }}>
             <div style={fieldStyle}>
-              <label style={labelStyle}>Blood Group</label>
+              <label htmlFor="profile-blood-group" style={labelStyle}>Blood Group</label>
               <select
+                id="profile-blood-group"
                 name="bloodGroup"
                 value={profile.bloodGroup}
                 onChange={handleChange}
                 disabled={!editing}
-                style={inputStyle}
+                style={inputStyle(editing)}
               >
                 {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(group => (
                   <option key={group}>{group}</option>
@@ -307,13 +309,14 @@ function MyProfile() {
             </div>
 
             <div style={fieldStyle}>
-              <label style={labelStyle}>Donor Availability</label>
+              <label htmlFor="profile-availability" style={labelStyle}>Donor Availability</label>
               <select
+                id="profile-availability"
                 name="availability"
                 value={profile.availability}
                 onChange={handleChange}
                 disabled={!editing}
-                style={inputStyle}
+                style={inputStyle(editing)}
               >
                 <option>Available</option>
                 <option>Unavailable</option>
@@ -346,7 +349,7 @@ function MyProfile() {
               onClick={() => setEditing(false)}
               style={{
                 padding: '12px 20px',
-                border: '1px solid #d1d5db',
+                border: '2px solid #64748b',
                 borderRadius: '8px',
                 background: 'white',
                 cursor: 'pointer',
@@ -377,7 +380,7 @@ function MyProfile() {
 
       <p style={{
         textAlign: 'center',
-        color: '#9ca3af',
+        color: '#4b5563',
         fontSize: '11px',
         marginTop: '30px',
       }}>

@@ -55,6 +55,13 @@ export function createHospitalDonation(hospitalId, donation) {
   });
 }
 
+export function verifyHospitalDonation(hospitalId, donationId) {
+  return apiRequest(`/donations/hospitals/${hospitalId}/${donationId}/verify`, {
+    method: "PATCH",
+    body: { verified: true },
+  });
+}
+
 export function authorizeHospitalStaff(hospitalId, userId) {
   return apiRequest(`/hospitals/${hospitalId}/staff/${userId}/authorize`, {
     method: "POST",

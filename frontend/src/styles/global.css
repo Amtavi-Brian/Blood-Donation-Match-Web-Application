@@ -247,13 +247,14 @@
 .auth-card .pub-field input, .auth-card .pub-field select {
   min-height: 46px;
   padding: 11px 13px;
-  border: 1px solid #e4e8ef;
+  border: 1.5px solid #718096;
   border-radius: 8px;
+  background: #f0f7ff;
   color: #34425a;
   font-size: .84rem;
 }
-.auth-card .pub-field input::placeholder { color: #a3adbc; }
-.auth-card .pub-field input:focus, .auth-card .pub-field select:focus { outline: 3px solid #c8102e18; border-color: #d77583; }
+.auth-card .pub-field input::placeholder { color: #596579; opacity: 1; }
+.auth-card .pub-field input:focus, .auth-card .pub-field select:focus { outline: 3px solid #1d4ed833; border-color: #1d4ed8; background-color: #fff; }
 .auth-card .pub-password input { padding-right: 64px; }
 .auth-card .pub-password button { right: 10px; color: #737f92; font-size: .73rem; }
 .auth-card .pub-btn { min-height: 47px; font-size: .85rem; }

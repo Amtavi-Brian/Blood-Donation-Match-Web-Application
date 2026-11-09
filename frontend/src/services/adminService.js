@@ -5,6 +5,10 @@ export function getUsers({ skip = 0, limit = 100 } = {}) {
   return apiRequest(`/admin/users?${query}`);
 }
 
+export function getUser(userId) {
+  return apiRequest(`/admin/users/${userId}`);
+}
+
 export function updateUserActivation(userId, isActive) {
   return apiRequest(`/admin/users/${userId}/activation`, {
     method: "PATCH",
@@ -19,4 +23,12 @@ export function createHospitalStaffAccount(staff) {
 export function getAuditLogs({ skip = 0, limit = 50 } = {}) {
   const query = new URLSearchParams({ skip: String(skip), limit: String(limit) });
   return apiRequest(`/audit/?${query}`);
+}
+
+export function getAuditLogCount() {
+  return apiRequest("/audit/count");
+}
+
+export function getAuditLog(auditId) {
+  return apiRequest(`/audit/${auditId}`);
 }

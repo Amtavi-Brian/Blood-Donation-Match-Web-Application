@@ -13,23 +13,31 @@
 
 .field__control {
   width: 100%;
-  border: 1px solid #dfe6ee;
+  border: 1.5px solid #718096;
   border-radius: 12px;
-  background: #ffffff;
+  background: #f0f7ff;
   color: #0f172a;
   padding: 0.8rem 0.9rem;
   font-size: 0.9rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.field__control::placeholder {
+  color: #596579;
+  opacity: 1;
+}
+
 .field__control:focus {
   outline: none;
-  border-color: rgba(201, 3, 30, 0.5);
-  box-shadow: 0 0 0 3px rgba(201, 3, 30, 0.08);
+  border-color: #1d4ed8;
+  background: #fff;
+  box-shadow: 0 0 0 3px #1d4ed833;
 }
 
 .field__control--error {
-  border-color: #ef4444;
+  border-color: #b4233c;
+  background: #fff7f7;
+  box-shadow: 0 0 0 2px #b4233c26;
 }
 
 .field__helper,
@@ -39,7 +47,7 @@
 }
 
 .field__helper {
-  color: #64748b;
+  color: #4b5563;
 }
 
 .field__error {

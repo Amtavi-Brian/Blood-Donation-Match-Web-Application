@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Card from "../../componenets/ui/Card";
-import { getAuditLogs } from "../../services/adminService";
+import { getAuditLog, getAuditLogCount, getAuditLogs } from "../../services/adminService";
 
 const filters = ["All", "Security", "Requests", "Hospitals", "Accounts"];
 
@@ -33,15 +33,34 @@ export default function SystemAlerts() {
   const [filter, setFilter] = useState("All");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  const [selectedLog, setSelectedLog] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
     let active = true;
-    getAuditLogs({ limit: 100 })
-      .then((response) => { if (active) setLogs(response.logs); })
+    Promise.all([getAuditLogs({ limit: 100 }), getAuditLogCount()])
+      .then(([response, count]) => {
+        if (!active) return;
+        setLogs(response.logs);
+        setTotalCount(count.total_audit_logs);
+      })
       .catch((loadError) => { if (active) setError(loadError.message || "Unable to load audit events."); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, []);
+
+  async function showDetails(auditId) {
+    setError("");
+    setLoadingDetail(true);
+    try {
+      setSelectedLog(await getAuditLog(auditId));
+    } catch (detailError) {
+      setError(detailError.message || "Unable to load audit event details.");
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
 
   const alerts = useMemo(() => logs.map((entry) => {
     const action = entry.action.toLowerCase();
@@ -82,7 +101,7 @@ export default function SystemAlerts() {
         ))}
       </div>
 
-      <Card title="Recent events" subtitle={`${alerts.length} audit events loaded`}>
+      <Card title="Recent events" subtitle={`${alerts.length} of ${totalCount} audit events loaded`}>
         {loading ? (
           <div className="sa-empty">Loading audit events…</div>
         ) : visible.length === 0 ? (
@@ -102,9 +121,23 @@ export default function SystemAlerts() {
                     <span>{a.time}</span>
                   </div>
                 </div>
+                <div className="sa-actions">
+                  <button type="button" className="sa-btn" disabled={loadingDetail} onClick={() => showDetails(a.id)}>
+                    View details
+                  </button>
+                </div>
               </div>
             ))}
           </div>
+        )}
+        {selectedLog && (
+          <section aria-label="Audit event details" style={{ marginTop: 16, padding: 16, border: "1px solid var(--border)", borderRadius: 10 }}>
+            <h3>Audit event #{selectedLog.audit_id}</h3>
+            <p>{selectedLog.description}</p>
+            <p>User: {selectedLog.user_id ?? "System"} · Entity: {selectedLog.entity_type} #{selectedLog.entity_id ?? "—"}</p>
+            <p>IP address: {selectedLog.ip_address || "Not recorded"} · {new Date(selectedLog.created_at).toLocaleString()}</p>
+            <button type="button" className="sa-btn" onClick={() => setSelectedLog(null)}>Close details</button>
+          </section>
         )}
       </Card>
     </div>

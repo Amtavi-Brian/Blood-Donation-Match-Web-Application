@@ -1,274 +1,144 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { getMyDonorProfile, updateMyLocation } from "../../services/donorService";
 
-import { useState } from 'react';
+const pageStyle = {
+  padding: 30,
+  background: "#f8f9fc",
+  minHeight: "100%",
+  color: "#1f2937",
+};
 
-function DonorSettings() {
-  const [settings, setSettings] = useState({
-    emailNotifications: true,
-    smsNotifications: true,
-    sosNotifications: true,
-    profileVisibility: true,
-    locationSharing: false,
-    twoFactor: false,
-  });
+const cardStyle = {
+  background: "#fff",
+  borderRadius: 12,
+  padding: 23,
+  marginBottom: 20,
+  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+};
 
-  const [saved, setSaved] = useState(false);
+export default function DonorSettings() {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const handleToggle = (setting) => {
-    setSettings((previous) => ({
-      ...previous,
-      [setting]: !previous[setting],
-    }));
-    setSaved(false);
-  };
+  useEffect(() => {
+    let active = true;
+    getMyDonorProfile()
+      .then((result) => { if (active) setProfile(result); })
+      .catch((loadError) => { if (active) setError(loadError.message || "Unable to load privacy settings."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-  const handleSave = () => {
-    setSaved(true);
-  };
+  async function setLocationSharing(enabled) {
+    setError("");
+    setNotice("");
 
-  const handlePasswordChange = () => {
-    const newPassword = prompt('Enter your new password:');
+    let coordinates;
+    if (enabled) {
+      if (!navigator.geolocation) {
+        setError("Location sharing is unavailable because this browser does not support geolocation.");
+        return;
+      }
 
-    if (!newPassword) return;
-
-    if (newPassword.length < 8) {
-      alert('Your password must contain at least 8 characters.');
-      return;
+      try {
+        coordinates = profile?.latitude != null && profile?.longitude != null
+          ? { latitude: profile.latitude, longitude: profile.longitude }
+          : await new Promise((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              ({ coords }) => resolve({
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+              }),
+              reject,
+            );
+          });
+      } catch {
+        setError("Your location could not be retrieved. Allow location access in your browser and try again.");
+        return;
+      }
     }
 
-    const confirmPassword = prompt('Confirm your new password:');
-
-    if (newPassword !== confirmPassword) {
-      alert('Passwords do not match.');
-      return;
+    setSaving(true);
+    try {
+      const result = await updateMyLocation({
+        ...(coordinates || {}),
+        consent_to_share_location: enabled,
+      });
+      setProfile((current) => ({
+        ...current,
+        consent_to_share_location: result.consent_to_share_location,
+        ...(enabled ? coordinates : { latitude: null, longitude: null }),
+      }));
+      setNotice(enabled
+        ? "Location sharing is enabled. Your approximate location may be used for donor matching."
+        : "Location sharing is disabled and your saved coordinates were cleared.");
+    } catch (saveError) {
+      setError(saveError.message || "Unable to update location sharing.");
+    } finally {
+      setSaving(false);
     }
+  }
 
-    alert('Password change request validated! Backend integration is still required.');
-  };
-
-  const settingGroups = [
-    {
-      title: 'Notifications',
-      description: 'Choose which updates you want to receive.',
-      items: [
-        {
-          key: 'emailNotifications',
-          label: 'Email Notifications',
-          detail: 'Receive updates through your email.',
-        },
-        {
-          key: 'smsNotifications',
-          label: 'SMS Notifications',
-          detail: 'Receive important updates through SMS.',
-        },
-        {
-          key: 'sosNotifications',
-          label: 'Emergency SOS Alerts',
-          detail: 'Receive urgent blood donation requests.',
-        },
-      ],
-    },
-    {
-      title: 'Privacy',
-      description: 'Manage how your donor information is shared.',
-      items: [
-        {
-          key: 'profileVisibility',
-          label: 'Donor Profile Visibility',
-          detail: 'Allow authorized hospitals to view your donor profile.',
-        },
-        {
-          key: 'locationSharing',
-          label: 'Location Sharing',
-          detail: 'Allow your approximate location to be used for donor matching.',
-        },
-      ],
-    },
-    {
-      title: 'Security',
-      description: 'Protect your BloodLink account.',
-      items: [
-        {
-          key: 'twoFactor',
-          label: 'Two-Factor Authentication',
-          detail: 'Enable an additional verification step when signing in.',
-        },
-      ],
-    },
-  ];
-
-  const styles = {
-    page: {
-      padding: '30px',
-      background: '#f8f9fc',
-      minHeight: '100vh',
-      fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
-      color: '#1f2937',
-    },
-    heading: {
-      fontSize: '28px',
-      fontWeight: '700',
-      marginBottom: '8px',
-    },
-    subtitle: {
-      color: '#6b7280',
-      marginBottom: '25px',
-    },
-    card: {
-      background: 'white',
-      borderRadius: '12px',
-      padding: '23px',
-      marginBottom: '20px',
-      boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-    },
-    button: {
-      background: '#991b1b',
-      color: 'white',
-      border: 'none',
-      padding: '12px 20px',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      fontWeight: '600',
-    },
-  };
+  const sharingLocation = Boolean(profile?.consent_to_share_location);
 
   return (
-    <div style={styles.page}>
-      <h1 style={styles.heading}>⚙️ Donor Settings</h1>
-
-      <p style={styles.subtitle}>
-        Manage your account preferences, privacy and security.
+    <main style={pageStyle}>
+      <h1 style={{ color: "#0b2142", marginBottom: 8 }}>Donor settings</h1>
+      <p style={{ color: "#6b7280", marginBottom: 25 }}>
+        Manage the privacy setting that is available for your donor account.
       </p>
 
-      {/* ACCOUNT INFORMATION */}
-      <div style={styles.card}>
-        <h2 style={{ marginTop: 0 }}>Account Information</h2>
+      {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
+      {notice && <p role="status" style={{ color: "#15803d" }}>{notice}</p>}
 
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>
-          Manage your BloodLink account and security preferences.
+      <section style={cardStyle}>
+        <h2 style={{ marginTop: 0 }}>Location sharing</h2>
+        <p style={{ color: "#6b7280" }}>
+          When enabled, authorized hospitals can use your approximate location
+          to identify nearby potential donors. Turning this off clears your
+          stored coordinates.
         </p>
-
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '15px',
-          borderTop: '1px solid #eee',
-          paddingTop: '18px',
-          marginTop: '18px',
-        }}>
-          <div>
-            <strong>Password & Security</strong>
-            <p style={{ color: '#6b7280', fontSize: '13px' }}>
-              Update your account password.
+        {loading ? (
+          <p role="status">Loading your privacy settings…</p>
+        ) : (
+          <>
+            <p>
+              Current status: <strong>{sharingLocation ? "On" : "Off"}</strong>
             </p>
-          </div>
-
-          <button
-            style={styles.button}
-            onClick={handlePasswordChange}
-          >
-            Change Password
-          </button>
-        </div>
-      </div>
-
-      {/* SETTINGS GROUPS */}
-      {settingGroups.map((group) => (
-        <div style={styles.card} key={group.title}>
-          <h2 style={{ marginTop: 0 }}>{group.title}</h2>
-
-          <p style={{
-            color: '#6b7280',
-            fontSize: '14px',
-            marginBottom: '20px',
-          }}>
-            {group.description}
-          </p>
-
-          {group.items.map((item) => (
-            <div
-              key={item.key}
+            <button
+              type="button"
+              onClick={() => setLocationSharing(!sharingLocation)}
+              disabled={saving}
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '15px',
-                padding: '17px 0',
-                borderTop: '1px solid #eee',
+                background: sharingLocation ? "#fff" : "#991b1b",
+                color: sharingLocation ? "#991b1b" : "#fff",
+                border: "1px solid #991b1b",
+                padding: "11px 18px",
+                borderRadius: 8,
+                cursor: saving ? "wait" : "pointer",
+                fontWeight: 600,
               }}
             >
-              <div>
-                <strong>{item.label}</strong>
-                <p style={{
-                  color: '#6b7280',
-                  fontSize: '13px',
-                  marginBottom: 0,
-                }}>
-                  {item.detail}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                role="switch"
-                aria-checked={settings[item.key]}
-                onClick={() => handleToggle(item.key)}
-                style={{
-                  minWidth: '54px',
-                  height: '28px',
-                  borderRadius: '20px',
-                  border: 'none',
-                  cursor: 'pointer',
-                  background: settings[item.key] ? '#15803d' : '#d1d5db',
-                  position: 'relative',
-                  flexShrink: 0,
-                }}
-              >
-                <span style={{
-                  position: 'absolute',
-                  top: '3px',
-                  left: settings[item.key] ? '29px' : '3px',
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '50%',
-                  background: 'white',
-                  transition: 'left 0.2s',
-                }} />
-              </button>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {/* SAVE SETTINGS */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '15px',
-        flexWrap: 'wrap',
-      }}>
-        <button style={styles.button} onClick={handleSave}>
-          Save Settings
-        </button>
-
-        {saved && (
-          <span style={{ color: '#15803d', fontWeight: '600' }}>
-            ✓ Settings saved in this session!
-          </span>
+              {saving ? "Saving…" : sharingLocation ? "Turn off location sharing" : "Enable location sharing"}
+            </button>
+          </>
         )}
-      </div>
+      </section>
 
-      <p style={{
-        color: '#9ca3af',
-        fontSize: '12px',
-        marginTop: '25px',
-      }}>
-        Settings currently apply locally in this session.
-        Account security and notification preferences require backend integration.
-      </p>
-    </div>
+      <section style={cardStyle}>
+        <h2 style={{ marginTop: 0 }}>Password</h2>
+        <p style={{ color: "#6b7280" }}>
+          Password resets are verified by a one-time email code. Use the
+          Forgot password flow on the sign-in page to reset your password.
+        </p>
+        <Link to="/login" style={{ color: "#991b1b", fontWeight: 600 }}>
+          Go to sign in
+        </Link>
+      </section>
+    </main>
   );
 }
-
-export default DonorSettings;

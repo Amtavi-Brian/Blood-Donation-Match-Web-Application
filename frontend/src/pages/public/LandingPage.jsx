@@ -1,4 +1,6 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { getVerifiedHospitalMap } from "../../services/hospitalService";
 import "../../styles/global.css";
 
 const STEPS = [
@@ -15,6 +17,76 @@ function BloodLinkMark() {
         <path d="M10 25.5a6.2 6.2 0 0 0 6.2 6.2" fill="none" stroke="#fff" strokeLinecap="round" strokeWidth="2.4" />
       </svg>
     </span>
+  );
+}
+
+function VerifiedHospitalLocations() {
+  const [locations, setLocations] = useState([]);
+  const [city, setCity] = useState("");
+  const [searchCity, setSearchCity] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    getVerifiedHospitalMap({ city: searchCity || undefined })
+      .then((result) => { if (active) setLocations(result); })
+      .catch((loadError) => { if (active) setError(loadError.message || "Unable to load hospital locations."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [searchCity]);
+
+  function search(event) {
+    event.preventDefault();
+    const nextCity = city.trim();
+    if (nextCity === searchCity) return;
+    setLoading(true);
+    setError("");
+    setSearchCity(nextCity);
+  }
+
+  function clearSearch() {
+    setCity("");
+    setLoading(true);
+    setError("");
+    setSearchCity("");
+  }
+
+  return (
+    <section style={{ maxWidth: 1120, margin: "0 auto", padding: "48px 24px" }} aria-labelledby="hospital-locations-heading">
+      <p className="landing-eyebrow">VERIFIED CARE LOCATIONS</p>
+      <h2 id="hospital-locations-heading">Find a verified hospital</h2>
+      <p>Browse verified hospitals and open their approximate location in your map app.</p>
+      <form onSubmit={search} style={{ display: "flex", flexWrap: "wrap", gap: 10, margin: "18px 0" }}>
+        <label htmlFor="hospital-city">Filter by city</label>
+        <input
+          id="hospital-city"
+          value={city}
+          maxLength={100}
+          onChange={(event) => setCity(event.target.value)}
+          placeholder="Enter a city"
+        />
+        <button type="submit">Search</button>
+        {searchCity && <button type="button" onClick={clearSearch}>Clear</button>}
+      </form>
+      {error && <p role="alert">{error}</p>}
+      {loading ? <p role="status">Loading verified hospitals…</p> : locations.length === 0 ? (
+        <p>No verified hospitals were found{searchCity ? ` in ${searchCity}` : ""}.</p>
+      ) : (
+        <ul style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 14, listStyle: "none", padding: 0 }}>
+          {locations.map((location) => {
+            const mapUrl = `https://www.openstreetmap.org/?mlat=${location.latitude}&mlon=${location.longitude}#map=16/${location.latitude}/${location.longitude}`;
+            return (
+              <li key={location.id} style={{ background: "#fff", border: "1px solid #eceff4", borderRadius: 12, padding: 16 }}>
+                <h3>{location.name}</h3>
+                <p>{location.address}, {location.city}</p>
+                <a href={mapUrl} target="_blank" rel="noopener noreferrer">Open location map</a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -78,6 +150,8 @@ export default function LandingPage() {
         <div className="landing-feature"><span className="feature-icon" aria-hidden="true">♡</span><div><strong>Get urgent alerts</strong><p>Reach donors when every moment counts.</p></div></div>
         <div className="landing-feature"><span className="feature-icon" aria-hidden="true">✚</span><div><strong>Support local hospitals</strong><p>Help keep blood available for care.</p></div></div>
       </section>
+
+      <VerifiedHospitalLocations />
 
       <section className="landing-how" id="how-it-works">
         <p className="landing-eyebrow">HOW BLOODLINK WORKS</p>

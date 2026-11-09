@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import Card from "../../componenets/ui/Card";
 import StatusBadge from "../../componenets/ui/StatusBadge";
-import { getUsers, updateUserActivation } from "../../services/adminService";
+import {
+  createHospitalStaffAccount,
+  getUsers,
+  updateUserActivation,
+} from "../../services/adminService";
 
 const filters = ["All", "Donor", "Hospital"];
 
@@ -44,6 +48,12 @@ export default function ManageUsers() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [staffForm, setStaffForm] = useState({
+    full_name: "",
+    email: "",
+    phone_number: "",
+    password: "",
+  });
 
   useEffect(() => {
     let active = true;
@@ -64,6 +74,28 @@ export default function ManageUsers() {
       setNotice(`${updated.full_name} is now ${updated.is_active ? "active" : "inactive"}.`);
     } catch (requestError) {
       setError(requestError.message || "Unable to update this account.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const createStaffAccount = async (event) => {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const created = await createHospitalStaffAccount({
+        ...staffForm,
+        phone_number: staffForm.phone_number || null,
+      });
+      setUsers((list) => [created, ...list.filter((user) => user.id !== created.id)]);
+      setStaffForm({ full_name: "", email: "", phone_number: "", password: "" });
+      setNotice(
+        `Staff account created for ${created.full_name}. They must verify their email, then be authorized for a hospital in Manage Hospitals.`,
+      );
+    } catch (requestError) {
+      setError(requestError.message || "Unable to create the hospital staff account.");
     } finally {
       setBusy(false);
     }
@@ -93,6 +125,57 @@ export default function ManageUsers() {
 
       {notice && <div className="mu-notice">{notice}</div>}
       {error && <p role="alert" style={{ color: "#b91c1c" }}>{error}</p>}
+
+      <Card title="Create hospital staff account" subtitle="The staff member must verify their email before signing in.">
+        <form
+          onSubmit={createStaffAccount}
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 12 }}
+        >
+          <label>
+            Full name
+            <input
+              required
+              minLength={2}
+              maxLength={150}
+              value={staffForm.full_name}
+              onChange={(event) => setStaffForm({ ...staffForm, full_name: event.target.value })}
+            />
+          </label>
+          <label>
+            Email
+            <input
+              required
+              type="email"
+              value={staffForm.email}
+              onChange={(event) => setStaffForm({ ...staffForm, email: event.target.value })}
+            />
+          </label>
+          <label>
+            Phone number
+            <input
+              type="tel"
+              maxLength={30}
+              value={staffForm.phone_number}
+              onChange={(event) => setStaffForm({ ...staffForm, phone_number: event.target.value })}
+            />
+          </label>
+          <label>
+            Temporary password
+            <input
+              required
+              type="password"
+              minLength={8}
+              maxLength={128}
+              autoComplete="new-password"
+              value={staffForm.password}
+              onChange={(event) => setStaffForm({ ...staffForm, password: event.target.value })}
+            />
+          </label>
+          <button className="mu-btn solid" type="submit" disabled={busy}>
+            {busy ? "Creating…" : "Create account"}
+          </button>
+        </form>
+      </Card>
 
       <div className="mu-bar">
         {filters.map((f) => (

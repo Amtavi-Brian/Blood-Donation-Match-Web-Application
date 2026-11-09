@@ -48,7 +48,7 @@ function UpdateAvailability() {
 
   const cardStyle = {
     background: '#ffffff',
-    border: '1px solid #eceef2',
+    border: '1px solid #cbd2dc',
     borderRadius: '14px',
     padding: '25px',
     marginBottom: '22px',
@@ -59,19 +59,19 @@ function UpdateAvailability() {
     display: 'block',
     fontSize: '13px',
     fontWeight: '600',
-    color: '#374151',
+    color: '#263449',
     marginBottom: '9px',
   };
 
   const inputStyle = {
     width: '100%',
     padding: '12px',
-    border: '1px solid #e5e7eb',
+    border: '2px solid #64748b',
     borderRadius: '8px',
     fontSize: '13px',
     boxSizing: 'border-box',
     color: '#172033',
-    background: 'white',
+    background: '#eff6ff',
   };
 
   return (
@@ -98,7 +98,7 @@ function UpdateAvailability() {
           Update Availability
         </h1>
 
-        <p style={{ color: '#6b7280', fontSize: '13px' }}>
+        <p style={{ color: '#4b5563', fontSize: '13px' }}>
           Let hospitals know when you are ready to donate blood.
         </p>
       </div>
@@ -127,7 +127,7 @@ function UpdateAvailability() {
           </h2>
 
           <p style={{
-            color: '#6b7280',
+            color: '#4b5563',
             fontSize: '13px',
             marginBottom: '22px',
           }}>
@@ -155,7 +155,7 @@ function UpdateAvailability() {
 
               <p style={{
                 fontSize: '12px',
-                color: '#6b7280',
+                color: '#4b5563',
                 marginTop: '7px',
               }}>
                 {availability
@@ -200,9 +200,10 @@ function UpdateAvailability() {
           </p>
 
           <div style={{ marginBottom: '22px' }}>
-            <label style={labelStyle}>Your Current Location</label>
+            <label htmlFor="availability-location" style={labelStyle}>Your Current Location</label>
 
             <input
+              id="availability-location"
               style={inputStyle}
               value={location}
               onChange={(e) => {
@@ -223,7 +224,7 @@ function UpdateAvailability() {
           </h2>
 
           <p style={{
-            color: '#6b7280',
+            color: '#4b5563',
             fontSize: '13px',
             marginBottom: '22px',
           }}>
@@ -255,7 +256,7 @@ function UpdateAvailability() {
                 </strong>
 
                 <p style={{
-                  color: '#9ca3af',
+                  color: '#4b5563',
                   fontSize: '11px',
                   marginTop: '5px',
                 }}>
@@ -308,7 +309,7 @@ function UpdateAvailability() {
 
       <p style={{
         textAlign: 'center',
-        color: '#9ca3af',
+        color: '#4b5563',
         fontSize: '11px',
       }}>
         © 2026 BloodLink. Saving Lives Together ❤️

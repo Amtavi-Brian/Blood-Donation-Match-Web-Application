@@ -13,6 +13,10 @@ export function createBloodRequest(request) {
   return apiRequest("/blood-requests/", { method: "POST", body: request });
 }
 
+export function getBloodRequest(requestId) {
+  return apiRequest(`/blood-requests/${requestId}`);
+}
+
 export function updateBloodRequest(requestId, updates) {
   return apiRequest(`/blood-requests/${requestId}`, {
     method: "PATCH",

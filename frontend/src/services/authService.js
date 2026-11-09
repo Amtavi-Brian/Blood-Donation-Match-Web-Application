@@ -49,6 +49,20 @@ export function resendVerificationOtp(email) {
   });
 }
 
+export function requestPasswordReset(email) {
+  return apiRequest("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export function resetPassword({ email, otp, newPassword }) {
+  return apiRequest("/auth/reset-password", {
+    method: "POST",
+    body: { email, otp, new_password: newPassword },
+  });
+}
+
 export function getCurrentUser(token) {
   return apiRequest("/users/me", { token });
 }
