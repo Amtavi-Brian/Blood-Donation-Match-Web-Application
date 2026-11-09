@@ -145,7 +145,7 @@
 
 .hospital-stock-row {
   display: grid;
-  grid-template-columns: 28px minmax(0, 1fr) 44px;
+  grid-template-columns: minmax(105px, .8fr) minmax(0, 1.8fr) auto;
   align-items: center;
   gap: 8px;
   min-height: 39px;
@@ -156,16 +156,26 @@
   border-bottom: 0;
 }
 
-.hospital-stock-row > strong {
+.hospital-stock-label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hospital-stock-label > strong {
   color: #27425a;
   font-size: .72rem;
 }
 
-.hospital-stock-row > small {
+.hospital-stock-label > small,
+.hospital-stock-threshold {
   color: #667d92;
   font-size: .61rem;
-  text-align: right;
   white-space: nowrap;
+}
+
+.hospital-stock-threshold {
+  text-align: right;
 }
 
 .hospital-stock-meter {
@@ -413,6 +423,13 @@
   font-size: .75rem;
 }
 
+.hospital-batch-help {
+  margin: 4px 0 10px;
+  color: #526b82;
+  font-size: .7rem;
+  line-height: 1.5;
+}
+
 .hospital-batches ul {
   display: grid;
   gap: 6px;
@@ -474,6 +491,16 @@
   .hospital-picker select {
     width: 100%;
     max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .hospital-stock-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .hospital-stock-meter {
+    grid-column: 1 / -1;
   }
 }
 

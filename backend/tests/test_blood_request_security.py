@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -11,8 +13,8 @@ from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.hospital import Hospital
 from app.models.hospital_user import HospitalUser
-from app.models.donor_profile import DonorProfile
 from app.models.blood_request import BloodRequest
+from app.models.donor_profile import BloodGroup, DonorProfile
 
 
 @pytest.fixture
@@ -217,3 +219,197 @@ def test_hospital_staff_can_only_list_authorized_hospitals(test_environment):
     assert [hospital["id"] for hospital in response.json()] == [
         ids["hospital_a"]
     ]
+
+
+def test_hospital_staff_can_receive_and_issue_stock(test_environment):
+    client, _, ids, login_as = test_environment
+    app.dependency_overrides[get_current_user] = login_as(ids["staff_a"])
+    hospital_id = ids["hospital_a"]
+
+    response = client.post(
+        f"/api/v1/stock/hospitals/{hospital_id}",
+        json={"blood_type": "O+", "component": "whole_blood", "threshold": 2},
+    )
+    assert response.status_code == 201, response.text
+    stock_id = response.json()["stock_id"]
+
+    response = client.post(
+        f"/api/v1/stock/hospitals/{hospital_id}/items/{stock_id}/batches",
+        json={
+            "batch_reference": "BATCH-001",
+            "quantity": 5,
+            "expiry_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        },
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["remaining_quantity"] == 5
+
+    response = client.get(f"/api/v1/stock/hospitals/{hospital_id}")
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["quantity"] == 5
+
+    response = client.get(
+        f"/api/v1/stock/hospitals/{hospital_id}/items/{stock_id}/batches"
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["batch_reference"] == "BATCH-001"
+
+    response = client.post(
+        f"/api/v1/stock/hospitals/{hospital_id}/items/{stock_id}/issue",
+        json={"quantity": 2},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["quantity"] == 3
+
+    response = client.post(
+        f"/api/v1/stock/hospitals/{hospital_id}/items/{stock_id}/issue",
+        json={"quantity": 4},
+    )
+    assert response.status_code == 409
+
+
+def test_hospital_staff_can_manage_request_statuses(test_environment):
+    client, _, ids, login_as = test_environment
+    app.dependency_overrides[get_current_user] = login_as(ids["staff_a"])
+    hospital_id = ids["hospital_a"]
+
+    response = client.post(
+        "/api/v1/blood-requests/",
+        json={"blood_group": "O+", "units_needed": 2, "urgency": "urgent"},
+    )
+    assert response.status_code == 201, response.text
+    fulfilled_id = response.json()["id"]
+
+    response = client.get(
+        f"/api/v1/blood-requests/?hospital_id={hospital_id}"
+    )
+    assert response.status_code == 200, response.text
+    assert [request["id"] for request in response.json()] == [fulfilled_id]
+
+    response = client.patch(
+        f"/api/v1/blood-requests/{fulfilled_id}/status",
+        json={"status": "fulfilled"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "fulfilled"
+
+    response = client.patch(
+        f"/api/v1/blood-requests/{fulfilled_id}/status",
+        json={"status": "cancelled"},
+    )
+    assert response.status_code == 409
+
+    response = client.post(
+        "/api/v1/blood-requests/",
+        json={"blood_group": "A+", "units_needed": 1},
+    )
+    assert response.status_code == 201, response.text
+    cancelled_id = response.json()["id"]
+
+    response = client.delete(f"/api/v1/blood-requests/{cancelled_id}")
+    assert response.status_code == 200, response.text
+    assert response.json()["status"] == "cancelled"
+
+
+def test_hospital_dashboard_matching_donations_and_reports(test_environment):
+    client, db, ids, login_as = test_environment
+    app.dependency_overrides[get_current_user] = login_as(ids["staff_a"])
+    hospital_id = ids["hospital_a"]
+
+    donor_profile = DonorProfile(
+        user_id=ids["donor"],
+        blood_group=BloodGroup.O_POSITIVE,
+        city="Nairobi",
+        available_to_contact=True,
+        consent_to_contact=True,
+        consent_to_share_location=True,
+        latitude=-1.2864,
+        longitude=36.8172,
+    )
+    db.add(donor_profile)
+    db.flush()
+    staff = db.get(User, ids["staff_a"])
+    donor = db.get(User, ids["donor"])
+    staff.is_email_verified = True
+    donor.is_email_verified = True
+    db.commit()
+    donor_profile_id = donor_profile.id
+
+    response = client.post(
+        "/api/v1/blood-requests/",
+        json={"blood_group": "O+", "units_needed": 1, "urgency": "routine"},
+    )
+    assert response.status_code == 201, response.text
+    request_id = response.json()["id"]
+
+    response = client.get(
+        f"/api/v1/matching/requests/{request_id}/donors"
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["donor_profile_id"] == donor_profile_id
+
+    response = client.get(f"/api/v1/hospitals/{hospital_id}/donors/map")
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["latitude"] == round(-1.2864, 2)
+
+    response = client.post(
+        f"/api/v1/donations/hospitals/{hospital_id}",
+        json={
+            "donor_id": donor_profile_id,
+            "blood_type": "O+",
+            "quantity": 1,
+        },
+    )
+    assert response.status_code == 201, response.text
+    donation_id = response.json()["donation_id"]
+    assert response.json()["verified"] is False
+
+    response = client.get(f"/api/v1/donations/hospitals/{hospital_id}")
+    assert response.status_code == 200, response.text
+    assert response.json()[0]["donation_id"] == donation_id
+
+    response = client.patch(
+        f"/api/v1/donations/hospitals/{hospital_id}/{donation_id}/verify",
+        json={"verified": True},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["verified"] is True
+
+    response = client.post(
+        f"/api/v1/stock/hospitals/{hospital_id}",
+        json={"blood_type": "O+", "component": "whole_blood", "threshold": 5},
+    )
+    assert response.status_code == 201, response.text
+    stock_id = response.json()["stock_id"]
+    response = client.post(
+        f"/api/v1/stock/hospitals/{hospital_id}/items/{stock_id}/batches",
+        json={
+            "batch_reference": "REPORT-BATCH",
+            "quantity": 4,
+            "expiry_date": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        },
+    )
+    assert response.status_code == 201, response.text
+
+    response = client.get(
+        f"/api/v1/reports/blood-stock?hospital_id={hospital_id}"
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["total_quantity"] == 4
+    assert response.json()["low_stock_items"] == 1
+
+    response = client.get(
+        f"/api/v1/reports/blood-requests?hospital_id={hospital_id}"
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["pending_requests"] == 1
+
+    response = client.get(
+        f"/api/v1/reports/donations?hospital_id={hospital_id}"
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["verified_donations"] == 1
+
+    response = client.get("/api/v1/notifications/unread-count")
+    assert response.status_code == 200, response.text
+    assert isinstance(response.json()["unread_count"], int)

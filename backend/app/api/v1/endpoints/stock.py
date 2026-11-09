@@ -86,7 +86,12 @@ def create_hospital_stock(
 ):
     require_hospital_access(db, current_user, hospital_id)
 
-    return stock_service.create_stock_item(db, hospital_id, data, performed_by=current_user.id)
+    return stock_service.create_stock_item(
+        db,
+        hospital_id,
+        data,
+        performed_by_user_id=current_user.id,
+    )
 
 
 @router.post(
@@ -108,7 +113,7 @@ def add_hospital_stock_batch(
         hospital_id,
         stock_id,
         data,
-        performed_by=current_user.id,
+        performed_by_user_id=current_user.id,
     )
 
 
@@ -149,5 +154,5 @@ def issue_hospital_stock(
         hospital_id,
         stock_id,
         data.quantity,
-        performed_by=current_user.id,
+        performed_by_user_id=current_user.id,
     )

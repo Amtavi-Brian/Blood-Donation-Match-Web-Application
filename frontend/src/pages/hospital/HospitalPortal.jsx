@@ -67,13 +67,16 @@ export default function HospitalPortal() {
     notes: "",
     needed_by: "",
   });
+  const [requestDateMinimum] = useState(() =>
+    localDateTimeValue(new Date(Date.now() + 60_000))
+  );
   const [stockForm, setStockForm] = useState({
     blood_type: "O+",
     component: "whole_blood",
     threshold: 5,
   });
   const [batchForm, setBatchForm] = useState({
-    stockId: "",
+    stockType: "",
     batch_reference: "",
     quantity: 1,
     expiry_date: "",
@@ -125,16 +128,23 @@ export default function HospitalPortal() {
   }, [hospitalId, isAnalyticsPage]);
 
   const selectedHospital = hospitals.find((hospital) => String(hospital.id) === String(hospitalId));
-  const stockLevels = useMemo(() => BLOOD_TYPES.map((bloodType) => {
-    const items = stock.filter((item) => item.blood_type === bloodType);
-    return {
-      bloodType,
-      quantity: items.reduce((total, item) => total + Number(item.quantity || 0), 0),
-      threshold: items.reduce((total, item) => total + Number(item.threshold || 0), 0),
-    };
-  }), [stock]);
-  const totalStockUnits = stockLevels.reduce((total, item) => total + item.quantity, 0);
-  const lowStockCount = stockLevels.filter((item) => item.quantity <= item.threshold && item.threshold > 0).length;
+  const stockTypeOptions = useMemo(() => BLOOD_TYPES.flatMap((bloodType) =>
+    COMPONENTS.map((component) => {
+      const existingStock = stock.find((item) =>
+        item.blood_type === bloodType && item.component === component
+      );
+      return {
+        key: `${bloodType}|${component}`,
+        bloodType,
+        component,
+        existingStock,
+      };
+    })
+  ), [stock]);
+  const totalStockUnits = stock.reduce((total, item) => total + Number(item.quantity || 0), 0);
+  const lowStockCount = stock.filter((item) =>
+    Number(item.threshold) > 0 && Number(item.quantity) <= Number(item.threshold)
+  ).length;
   const recentActivity = useMemo(() => [
     ...requests.map((request) => ({
       id: `request-${request.id}`,
@@ -212,22 +222,36 @@ export default function HospitalPortal() {
 
   async function handleAddBatch(event) {
     event.preventDefault();
-    if (!hospitalId || !batchForm.stockId) return;
+    if (!hospitalId || !batchForm.stockType) return;
     setBusy(true);
     setError("");
     setNotice("");
+    let createdStockType = false;
     try {
-      await addStockBatch(hospitalId, batchForm.stockId, {
+      const [bloodType, component] = batchForm.stockType.split("|");
+      let stockItem = stock.find((item) =>
+        item.blood_type === bloodType && item.component === component
+      );
+      if (!stockItem) {
+        stockItem = await createStockItem(hospitalId, { blood_type: bloodType, component });
+        createdStockType = true;
+      }
+      await addStockBatch(hospitalId, stockItem.stock_id, {
         batch_reference: batchForm.batch_reference,
         quantity: Number(batchForm.quantity),
         expiry_date: new Date(batchForm.expiry_date).toISOString(),
       });
       setNotice("Stock batch recorded.");
       setStockBatches({});
-      setBatchForm({ stockId: "", batch_reference: "", quantity: 1, expiry_date: "" });
+      setBatchForm({ stockType: "", batch_reference: "", quantity: 1, expiry_date: "" });
       await loadData();
     } catch (submitError) {
-      setError(messageFrom(submitError));
+      if (createdStockType) {
+        await loadData();
+        setError(`Stock type created, but the batch could not be received: ${messageFrom(submitError)}`);
+      } else {
+        setError(messageFrom(submitError));
+      }
     } finally {
       setBusy(false);
     }
@@ -413,11 +437,14 @@ export default function HospitalPortal() {
             <section className="hospital-stat-grid" aria-label="Hospital overview">
               <article className="hospital-stat hospital-stat--requests">
                 <span className="hospital-stat-icon" aria-hidden="true">♧</span>
-                <div><p>Total Requests</p><strong>{requests.length}</strong></div>
+                <div><p>Requests</p><strong>{requests.length}</strong></div>
               </article>
               <article className={`hospital-stat ${lowStockCount ? "hospital-stat--low" : "hospital-stat--healthy"}`}>
                 <span className="hospital-stat-icon" aria-hidden="true">{lowStockCount ? "⚠" : "✓"}</span>
-                <div><p>Blood Stock</p><strong>{lowStockCount ? "Low" : "Healthy"}</strong></div>
+                <div>
+                  <p>Blood Stock</p>
+                  <strong>{stock.length === 0 ? "Not configured" : lowStockCount ? "Low" : "Healthy"}</strong>
+                </div>
               </article>
               <article className="hospital-stat hospital-stat--donors">
                 <span className="hospital-stat-icon" aria-hidden="true">◷</span>
@@ -428,21 +455,26 @@ export default function HospitalPortal() {
             <section className="hospital-dashboard-grid">
               <article className="hospital-panel hospital-stock-panel">
                 <h2>Blood Stock Levels</h2>
-                {stockLevels.map((item) => {
-                  const percentage = totalStockUnits ? Math.max(4, Math.round(item.quantity / totalStockUnits * 100)) : 0;
-                  const tone = item.quantity === 0 ? "empty" : item.quantity <= item.threshold && item.threshold > 0 ? "low" : "good";
+                {stock.length === 0 ? <p className="hospital-empty">No stock types have been configured yet.</p> : stock.map((item) => {
+                  const quantity = Number(item.quantity || 0);
+                  const threshold = Number(item.threshold || 0);
+                  const percentage = totalStockUnits ? Math.max(4, Math.round(quantity / totalStockUnits * 100)) : 0;
+                  const tone = quantity === 0 ? "empty" : quantity <= threshold && threshold > 0 ? "low" : "good";
                   return (
-                    <div className="hospital-stock-row" key={item.bloodType}>
-                      <strong>{item.bloodType}</strong>
+                    <div className="hospital-stock-row" key={item.stock_id}>
+                      <div className="hospital-stock-label">
+                        <strong>{item.blood_type}</strong>
+                        <small>{item.component.replaceAll("_", " ")}</small>
+                      </div>
                       <div className="hospital-stock-meter">
-                        <span className={`hospital-stock-value is-${tone}`}>{item.quantity} units</span>
+                        <span className={`hospital-stock-value is-${tone}`}>{quantity} units</span>
                         <span className="hospital-stock-track"><span className={`is-${tone}`} style={{ width: `${percentage}%` }} /></span>
                       </div>
-                      <small>{item.quantity} units</small>
+                      <small className="hospital-stock-threshold">Threshold {threshold}</small>
                     </div>
                   );
                 })}
-                <p className="hospital-stock-total">{totalStockUnits} total units · {lowStockCount} low-stock types</p>
+                <p className="hospital-stock-total">{totalStockUnits} total units · {lowStockCount} low-stock items</p>
               </article>
 
               <div className="hospital-dashboard-side">
@@ -533,11 +565,17 @@ export default function HospitalPortal() {
               <form onSubmit={handleAddBatch} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 16 }}>
                 <h2>Receive a batch</h2>
                 <label>Stock type
-                  <select required value={batchForm.stockId} onChange={(e) => setBatchForm({ ...batchForm, stockId: e.target.value })}>
-                    <option value="">Select stock item</option>
-                    {stock.map((item) => <option key={item.stock_id} value={item.stock_id}>{item.blood_type} · {item.component}</option>)}
+                  <select required value={batchForm.stockType} onChange={(e) => setBatchForm({ ...batchForm, stockType: e.target.value })}>
+                    <option value="">Select a blood type and component</option>
+                    {stockTypeOptions.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.bloodType} · {option.component.replaceAll("_", " ")}
+                        {option.existingStock ? "" : " (new stock type)"}
+                      </option>
+                    ))}
                   </select>
                 </label>
+                <p className="hospital-batch-help">Selecting a new stock type creates it automatically when you record the batch.</p>
                 <label>Batch reference
                   <input required value={batchForm.batch_reference} onChange={(e) => setBatchForm({ ...batchForm, batch_reference: e.target.value })} />
                 </label>
@@ -547,7 +585,7 @@ export default function HospitalPortal() {
                 <label>Expiry date
                   <input type="datetime-local" required value={batchForm.expiry_date} onChange={(e) => setBatchForm({ ...batchForm, expiry_date: e.target.value })} />
                 </label>
-                <button disabled={busy || !hospitalId || stock.length === 0}>Record batch</button>
+                <button disabled={busy || !hospitalId}>Record batch</button>
               </form>
             </section>
             <section>
@@ -689,7 +727,7 @@ export default function HospitalPortal() {
                 <label>Needed by (optional)
                   <input
                     type="datetime-local"
-                    min={localDateTimeValue(new Date(Date.now() + 60_000))}
+                    min={requestDateMinimum}
                     value={requestForm.needed_by}
                     onChange={(e) => setRequestForm({ ...requestForm, needed_by: e.target.value })}
                   />
