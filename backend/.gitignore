@@ -16,3 +16,8 @@ venv/
 .ruff_cache/
 .coverage
 htmlcov/
+# Local SQLite databases and backups
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
