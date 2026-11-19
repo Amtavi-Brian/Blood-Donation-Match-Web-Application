@@ -1,12 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db
+from app.db.session import get_db
+from app.api.deps import get_current_user
 from app.models.blood_request import (
     BloodRequest,
     BloodRequestStatus,
-    BloodRequestUrgency,
 )
 from app.models.hospital import Hospital
 from app.models.hospital_user import HospitalUser
@@ -17,14 +18,13 @@ from app.schemas.blood_request import (
     BloodRequestUpdate,
     BloodRequestStatusUpdate,
 )
-
 from app.services import blood_request_service
+
 
 router = APIRouter(
     prefix="/blood-requests",
     tags=["Blood Requests"],
 )
-
 
 
 def require_hospital_access(
@@ -33,6 +33,7 @@ def require_hospital_access(
     hospital_id: int | None = None,
 ) -> int:
     """Require active, authorized staff at a verified hospital."""
+
     if user.role != UserRole.HOSPITAL_STAFF or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -69,6 +70,7 @@ def require_hospital_access(
 
     return association.hospital_id
 
+
 @router.post(
     "/",
     response_model=BloodRequestResponse,
@@ -100,16 +102,19 @@ def list_blood_requests(
     include_cancelled: bool = False,
     current_user: User = Depends(get_current_user),
 ) -> list[BloodRequest]:
+
     if current_user.role == UserRole.ADMIN:
         return blood_request_service.list_blood_requests(
             db,
             status_filter,
-            hospital_id=hospital_id,
-            include_cancelled=include_cancelled,
         )
 
     if current_user.role == UserRole.HOSPITAL_STAFF:
-        hospital_id = require_hospital_access(db, current_user, hospital_id)
+        hospital_id = require_hospital_access(
+            db,
+            current_user,
+            hospital_id,
+        )
 
         return blood_request_service.list_blood_requests(
             db,
@@ -122,15 +127,12 @@ def list_blood_requests(
         return blood_request_service.list_blood_requests(
             db,
             status_filter,
-            hospital_id=hospital_id,
-            include_cancelled=include_cancelled,
         )
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
         detail="You are not authorized to view blood requests.",
     )
-
 
 
 @router.get(
@@ -153,14 +155,12 @@ def read_request(
             detail="Blood request not found.",
         )
 
-    # Hide requests from unverified hospitals.
     if not blood_request.hospital.is_verified:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Blood request not found.",
         )
 
-    # Hide cancelled requests from the general discovery endpoint.
     if blood_request.status == BloodRequestStatus.CANCELLED:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -168,7 +168,6 @@ def read_request(
         )
 
     return blood_request
-
 
 
 @router.patch(
@@ -200,8 +199,8 @@ def update_request(
 
     if blood_request.status != BloodRequestStatus.PENDING:
         raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail="Only pending blood requests can be updated.",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only pending blood requests can be updated.",
         )
 
     try:
@@ -243,6 +242,7 @@ def cancel_request(
         current_user,
         blood_request.hospital_id,
     )
+
     try:
         return blood_request_service.update_blood_request_status(
             db,
@@ -252,9 +252,9 @@ def cancel_request(
         )
     except ValueError as exc:
         raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail=str(exc),
-    ) from exc
+            status_code=status.HTTP_409_CONFLICT,
+            detail=str(exc),
+        ) from exc
 
 
 @router.patch(
