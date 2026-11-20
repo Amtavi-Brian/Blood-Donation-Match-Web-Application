@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import homeImage from "../../assets/images/home.jpeg";
 import { getVerifiedHospitalMap } from "../../services/hospitalService";
 import "../../styles/global.css";
 
@@ -123,25 +124,14 @@ export default function LandingPage() {
           </div>
         </div>
 
-        <div className="landing-art" aria-hidden="true">
-          <div className="art-orbit orbit-one" />
-          <div className="art-orbit orbit-two" />
-          <div className="donation-card">
-            <div className="donation-card-top"><span>YOUR GIFT, THEIR TOMORROW</span><span className="art-heart">♥</span></div>
-            <svg className="blood-bag" viewBox="0 0 220 270" role="img" aria-label="A blood donation bag">
-              <path d="M93 8h34v20H93z" fill="#c8102e" />
-              <path d="M100 28v18m20-18v18" stroke="#c8102e" strokeWidth="5" strokeLinecap="round" />
-              <rect x="48" y="46" width="124" height="174" rx="22" fill="#fff" stroke="#f1a4b0" strokeWidth="5" />
-              <path d="M53 144h114v52a20 20 0 0 1-20 20H73a20 20 0 0 1-20-20z" fill="#c8102e" />
-              <path d="M110 101c-8 15-24 29-24 41a24 24 0 0 0 48 0c0-12-16-26-24-41Z" fill="#c8102e" />
-              <path d="M95 145a12 12 0 0 0 12 12" fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round" />
-              <path d="M73 239v17h74v-17" fill="none" stroke="#c8102e" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M110 256v10" stroke="#c8102e" strokeWidth="5" strokeLinecap="round" />
-            </svg>
-            <div className="donation-card-caption"><strong>One donation</strong><span>can help save up to 3 lives</span></div>
+        <div className="landing-art">
+          <div className="art-orbit orbit-one" aria-hidden="true" />
+          <div className="art-orbit orbit-two" aria-hidden="true" />
+          <div className="landing-image-frame">
+            <img src={homeImage} alt="A blood donor giving a donation" />
           </div>
-          <div className="floating-note"><span>✦</span><strong>Be someone's<br />reason to hope.</strong></div>
-          <div className="landing-art-dot dot-one" /><div className="landing-art-dot dot-two" />
+          <div className="floating-note" aria-hidden="true"><span>✦</span><strong>Be someone's<br />reason to hope.</strong></div>
+          <div className="landing-art-dot dot-one" aria-hidden="true" /><div className="landing-art-dot dot-two" aria-hidden="true" />
         </div>
       </section>
 

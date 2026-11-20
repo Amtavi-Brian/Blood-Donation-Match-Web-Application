@@ -89,9 +89,9 @@ function AnalyticsDashboard() {
     },
   ]
 
-  const stockData = report?.stock_by_blood_type || []
-  const demandData = report?.demand_by_blood_type || []
-  const recentRequests = report?.recent_requests || []
+  const stockData = useMemo(() => report?.stock_by_blood_type || [], [report])
+  const demandData = useMemo(() => report?.demand_by_blood_type || [], [report])
+  const recentRequests = useMemo(() => report?.recent_requests || [], [report])
 
   const maxStockUnits = Math.max(
     1,
@@ -124,7 +124,7 @@ function AnalyticsDashboard() {
     return [...demandData]
       .sort((a, b) => Number(b.units_needed) - Number(a.units_needed))
       .slice(0, 6)
-  }, [report])
+  }, [demandData])
 
   if (loading) {
     return (
