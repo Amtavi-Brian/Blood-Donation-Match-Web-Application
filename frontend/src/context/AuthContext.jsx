@@ -2,8 +2,13 @@ import { useMemo, useState } from "react";
 import AuthContext from "./authContext";
 
 function readStoredUser() {
+  const token = localStorage.getItem("token");
   const storedUser = localStorage.getItem("user");
-  if (!storedUser) return null;
+  if (!token || !storedUser) {
+    if (!token && storedUser) localStorage.removeItem("user");
+    if (token && !storedUser) localStorage.removeItem("token");
+    return null;
+  }
 
   try {
     return JSON.parse(storedUser);

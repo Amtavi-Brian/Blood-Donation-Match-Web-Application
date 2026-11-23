@@ -218,7 +218,7 @@ function MyProfile() {
           fontSize: '25px',
           fontWeight: '700',
         }}>
-          {profile.fullName.split(' ').map(n => n[0]).join('').slice(0, 2)}
+          {(profile.fullName || 'Donor').trim().split(/\s+/).map(n => n[0]).join('').slice(0, 2).toUpperCase()}
         </div>
 
         <div style={{ flex: 1 }}>

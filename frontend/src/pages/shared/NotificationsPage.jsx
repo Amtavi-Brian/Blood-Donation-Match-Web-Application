@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import useAuth from "../../context/useAuth";
 import {
   getNotifications,
   getUnreadNotificationCount,
@@ -6,12 +8,22 @@ import {
   markNotificationRead,
 } from "../../services/notificationService";
 
+const ROLE_HOME = {
+  donor: "/donor",
+  hospital_staff: "/hospital",
+  admin: "/admin",
+};
+
 export default function NotificationsPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  const backUrl = (user && ROLE_HOME[user.role]) || "/";
 
   const loadNotifications = useCallback(async () => {
     await Promise.resolve();
@@ -63,8 +75,27 @@ export default function NotificationsPage() {
   }
 
   return (
-    <main style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
-      <header style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center" }}>
+    <main style={{ maxWidth: 900, margin: "0 auto", padding: 24, fontFamily: "Inter, Segoe UI, Arial, sans-serif" }}>
+      <button
+        type="button"
+        onClick={() => navigate(backUrl)}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#c8102e",
+          fontWeight: 600,
+          cursor: "pointer",
+          fontSize: "14px",
+          padding: 0,
+          marginBottom: 16,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+        }}
+      >
+        ← Back to Dashboard
+      </button>
+      <header style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", marginBottom: 20 }}>
         <div>
           <h1>Notifications</h1>
           <p>{unreadCount} unread notification{unreadCount === 1 ? "" : "s"}</p>

@@ -525,14 +525,14 @@ export default function HospitalPortal() {
           analytics ? (
             <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 14 }}>
               {[
-                ["Stock units", analytics.stock.total_quantity],
-                ["Low-stock items", analytics.stock.low_stock_items],
-                ["Total requests", analytics.requests.total_requests],
-                ["Pending requests", analytics.requests.pending_requests],
-                ["Fulfilled requests", analytics.requests.fulfilled_requests],
-                ["Donation records", analytics.donations.total_donations],
-                ["Verified donations", analytics.donations.verified_donations],
-                ["Verified units", analytics.donations.verified_quantity],
+                ["Stock units", analytics.stock?.total_quantity ?? 0],
+                ["Low-stock items", analytics.stock?.low_stock_items ?? 0],
+                ["Total requests", analytics.requests?.total_requests ?? 0],
+                ["Pending requests", analytics.requests?.pending_requests ?? 0],
+                ["Fulfilled requests", analytics.requests?.fulfilled_requests ?? 0],
+                ["Donation records", analytics.donations?.total_donations ?? 0],
+                ["Verified donations", analytics.donations?.verified_donations ?? 0],
+                ["Verified units", analytics.donations?.verified_quantity ?? 0],
               ].map(([label, value]) => (
                 <article key={label} style={{ border: "1px solid #ddd", borderRadius: 10, padding: 18 }}>
                   <p>{label}</p>

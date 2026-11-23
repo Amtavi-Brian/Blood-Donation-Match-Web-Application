@@ -25,7 +25,9 @@ export async function apiRequest(path, { body, token, ...options } = {}) {
   const accessToken = token ?? localStorage.getItem("token");
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+
+  const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
     ...options,
     headers,
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -35,6 +37,10 @@ export async function apiRequest(path, { body, token, ...options } = {}) {
 
   const responseBody = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
     throw new ApiError(
       getErrorMessage(responseBody?.detail, response.status),
       response.status,

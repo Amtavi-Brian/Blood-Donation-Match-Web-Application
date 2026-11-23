@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import PortalLayout from "../../componenets/dashboard/PortalLayout";
-import useAuth from "../../context/useAuth";
 import { getDashboardReport } from "../../services/reportService";
 import { getHospitals } from "../../services/hospitalService";
 import { getAuditLogs } from "../../services/adminService";
@@ -11,16 +8,6 @@ const STATS = [
   { id: "hospitals", key: "total_hospitals", icon: "▦", label: "Total Hospitals", tone: "lavender" },
   { id: "donors", key: "total_donors", icon: "♟", label: "Total Donors", tone: "mint" },
   { id: "alerts", key: "pending_requests", icon: "♧", label: "Active Alerts", tone: "peach" },
-];
-
-const NAVIGATION = [
-  { label: "Dashboard", icon: "⌂", to: "/admin" },
-  { label: "Manage Hospitals", icon: "▦", to: "/admin/hospitals" },
-  { label: "Manage Users", icon: "♟", to: "/admin/users" },
-  { label: "Verify Hospitals", icon: "◉", to: "/admin/verify-hospitals" },
-  { label: "System Alerts", icon: "♧", to: "/admin/alerts" },
-  { label: "Reports", icon: "▤", to: "/admin/reports" },
-  { label: "Settings", icon: "⚙", to: "/admin/settings" },
 ];
 
 function timeAgo(value) {
@@ -44,8 +31,6 @@ function activityIcon(action = "") {
 }
 
 export default function AdminDashboard({ onViewAllApprovals, onViewAllActivity }) {
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
   const [summary, setSummary] = useState(null);
   const [pendingHospitals, setPendingHospitals] = useState([]);
   const [activity, setActivity] = useState([]);
@@ -71,82 +56,69 @@ export default function AdminDashboard({ onViewAllApprovals, onViewAllActivity }
   }, []);
 
   return (
-    <PortalLayout
-      role="admin"
-      userName={user?.full_name || "Admin"}
-      userRole="System Admin"
-      title="Admin Dashboard"
-      subtitle={`Welcome, ${user?.full_name || "Admin"}`}
-      navigation={NAVIGATION}
-      onLogout={() => {
-        logout();
-        navigate("/login", { replace: true });
-      }}
-    >
-      <div className="admin-dashboard">
-        {error && <p className="admin-feedback" role="alert">{error}</p>}
+    <div className="admin-dashboard">
+      {error && <p className="admin-feedback" role="alert">{error}</p>}
 
-        <section className="admin-stat-grid" aria-label="Key figures">
-          {STATS.map((stat) => (
-            <article key={stat.id} className={`admin-stat admin-stat--${stat.tone}`}>
-              <span className="admin-stat-icon" aria-hidden="true">{stat.icon}</span>
-              <div>
-                <span className="admin-stat-label">{stat.label}</span>
-                <strong className="admin-stat-value">{summary ? summary[stat.key] : "—"}</strong>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        <section className="admin-panels">
-          <article className="admin-panel">
-            <header className="admin-panel-header">
-              <div>
-                <h2>Pending Hospital Approvals</h2>
-                <span className="admin-panel-accent" />
-              </div>
-              <button type="button" onClick={onViewAllApprovals}>View all</button>
-            </header>
-            {pendingHospitals.length ? (
-              <div className="admin-approval-list">
-                {pendingHospitals.slice(0, 4).map((hospital) => (
-                  <div className="admin-approval-row" key={hospital.id}>
-                    <span className="admin-row-icon is-pending" aria-hidden="true">▦</span>
-                    <strong>{hospital.name}</strong>
-                    <span className="admin-pending-badge">Pending</span>
-                  </div>
-                ))}
-              </div>
-            ) : <p className="admin-empty">No hospitals are waiting for approval.</p>}
+      <section className="admin-stat-grid" aria-label="Key figures">
+        {STATS.map((stat) => (
+          <article key={stat.id} className={`admin-stat admin-stat--${stat.tone}`}>
+            <span className="admin-stat-icon" aria-hidden="true">{stat.icon}</span>
+            <div>
+              <span className="admin-stat-label">{stat.label}</span>
+              <strong className="admin-stat-value">{summary ? summary[stat.key] : "—"}</strong>
+            </div>
           </article>
+        ))}
+      </section>
 
-          <article className="admin-panel">
-            <header className="admin-panel-header">
-              <div>
-                <h2>Recent System Activity</h2>
-                <span className="admin-panel-accent" />
-              </div>
-              <button type="button" onClick={onViewAllActivity} aria-label="View all system activity">···</button>
-            </header>
-            {activity.length ? (
-              <div className="admin-activity-list">
-                {activity.slice(0, 4).map((entry) => {
-                  const icon = activityIcon(entry.action);
-                  return (
-                    <div className="admin-activity-row" key={entry.audit_id}>
-                      <span className={`admin-row-icon is-${icon.tone}`} aria-hidden="true">{icon.icon}</span>
-                      <div>
-                        <strong>{entry.description}</strong>
-                        <small>{timeAgo(entry.created_at)}</small>
-                      </div>
+      <section className="admin-panels">
+        <article className="admin-panel">
+          <header className="admin-panel-header">
+            <div>
+              <h2>Pending Hospital Approvals</h2>
+              <span className="admin-panel-accent" />
+            </div>
+            <button type="button" onClick={onViewAllApprovals}>View all</button>
+          </header>
+          {pendingHospitals.length ? (
+            <div className="admin-approval-list">
+              {pendingHospitals.slice(0, 4).map((hospital) => (
+                <div className="admin-approval-row" key={hospital.id}>
+                  <span className="admin-row-icon is-pending" aria-hidden="true">▦</span>
+                  <strong>{hospital.name}</strong>
+                  <span className="admin-pending-badge">Pending</span>
+                </div>
+              ))}
+            </div>
+          ) : <p className="admin-empty">No hospitals are waiting for approval.</p>}
+        </article>
+
+        <article className="admin-panel">
+          <header className="admin-panel-header">
+            <div>
+              <h2>Recent System Activity</h2>
+              <span className="admin-panel-accent" />
+            </div>
+            <button type="button" onClick={onViewAllActivity} aria-label="View all system activity">···</button>
+          </header>
+          {activity.length ? (
+            <div className="admin-activity-list">
+              {activity.slice(0, 4).map((entry) => {
+                const icon = activityIcon(entry.action);
+                return (
+                  <div className="admin-activity-row" key={entry.audit_id}>
+                    <span className={`admin-row-icon is-${icon.tone}`} aria-hidden="true">{icon.icon}</span>
+                    <div>
+                      <strong>{entry.description}</strong>
+                      <small>{timeAgo(entry.created_at)}</small>
                     </div>
-                  );
-                })}
-              </div>
-            ) : <p className="admin-empty">No recent system activity is available.</p>}
-          </article>
-        </section>
-      </div>
-    </PortalLayout>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <p className="admin-empty">No recent system activity is available.</p>}
+        </article>
+      </section>
+    </div>
   );
 }
