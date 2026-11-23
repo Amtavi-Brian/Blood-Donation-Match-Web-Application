@@ -3,7 +3,9 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   loginUser,
   requestPasswordReset,
+  resendVerificationOtp,
   resetPassword,
+  verifyEmail,
 } from "../../services/authService";
 import useAuth from "../../context/useAuth";
 
@@ -29,6 +31,7 @@ export default function LoginForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [mode, setMode] = useState("login");
   const [resetCode, setResetCode] = useState("");
+  const [verifyCode, setVerifyCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [resetMessage, setResetMessage] = useState("");
 
@@ -115,6 +118,83 @@ export default function LoginForm() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleVerifyEmail(e) {
+    e.preventDefault();
+    setServerError("");
+
+    if (!/^\d{6}$/.test(verifyCode)) {
+      setServerError("Enter the 6-digit code from your email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      await verifyEmail(values.email, verifyCode);
+      setResetMessage("Email verified successfully! You can now log in.");
+      setMode("login");
+      setVerifyCode("");
+    } catch (err) {
+      setServerError(err.message || "Invalid or expired verification code.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    setServerError("");
+    setIsSubmitting(true);
+    try {
+      const result = await resendVerificationOtp(values.email);
+      setResetMessage(result?.message || "A new verification code was sent to your email.");
+    } catch (err) {
+      setServerError(err.message || "Unable to resend verification code.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (mode === "verify") {
+    return (
+      <form onSubmit={handleVerifyEmail} noValidate>
+        <p className="pub-note">
+          Enter the 6-digit verification code sent to {values.email || "your email"}.
+        </p>
+        <div className={`pub-field ${serverError ? "pub-has-error" : ""}`}>
+          <label htmlFor="verifyOtp">6-digit verification code</label>
+          <input
+            id="verifyOtp"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            value={verifyCode}
+            onChange={(event) => setVerifyCode(event.target.value.replace(/\D/g, ""))}
+            placeholder="123456"
+          />
+        </div>
+        {serverError && <p className="pub-form-error" role="alert">{serverError}</p>}
+        {resetMessage && <p className="pub-form-success" role="status">{resetMessage}</p>}
+        <button className="pub-btn pub-btn-primary pub-btn-block" type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Verifying..." : "Verify email"}
+        </button>
+        <button
+          type="button"
+          className="pub-btn pub-btn-ghost pub-btn-block"
+          disabled={isSubmitting}
+          onClick={handleResendVerification}
+        >
+          Resend code
+        </button>
+        <button
+          type="button"
+          className="pub-btn pub-btn-ghost pub-btn-block"
+          onClick={() => { setMode("login"); setServerError(""); }}
+        >
+          Back to log in
+        </button>
+      </form>
+    );
   }
 
   if (mode === "forgot") {
@@ -239,7 +319,21 @@ export default function LoginForm() {
         Forgot password?
       </button>
 
-      {serverError && <p className="pub-form-error" role="alert">{serverError}</p>}
+      {serverError && (
+        <div style={{ margin: "10px 0" }}>
+          <p className="pub-form-error" role="alert">{serverError}</p>
+          {serverError.toLowerCase().includes("verify your email") && (
+            <button
+              type="button"
+              className="pub-btn pub-btn-ghost pub-btn-block"
+              style={{ marginTop: 8 }}
+              onClick={() => { setMode("verify"); setServerError(""); }}
+            >
+              Enter verification code
+            </button>
+          )}
+        </div>
+      )}
 
       <button className="pub-btn pub-btn-primary pub-btn-block" type="submit" disabled={isSubmitting}>
         {isSubmitting ? "Logging in..." : "Log in"}

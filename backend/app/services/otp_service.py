@@ -179,6 +179,15 @@ def _send_otp(
         "If you did not request this code, ignore this email."
     )
 
+    if not settings.EMAILS_ENABLED:
+        logger.info(
+            "Email delivery disabled. [DEV OTP] Code for %s (%s) is: %s",
+            user.email,
+            purpose,
+            otp,
+        )
+        return
+
     try:
         email_sent = send_email(
             recipient=user.email,
