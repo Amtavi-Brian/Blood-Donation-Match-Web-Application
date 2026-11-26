@@ -35,7 +35,7 @@ function UpdateAvailability() {
     try {
       await updateMyDonorProfile({
         available_to_contact: availability,
-        city: location.trim() || null,
+        city: (location || '').trim() || null,
         consent_to_contact: contactConsent,
       });
       setSaved(true);

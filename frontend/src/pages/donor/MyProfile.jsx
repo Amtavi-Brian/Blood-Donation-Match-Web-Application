@@ -1,11 +1,14 @@
 
 import { useEffect, useState } from 'react';
-import { getCurrentUser } from '../../services/authService';
+import useAuth from '../../context/useAuth';
+import { getCurrentUser, updateCurrentUser } from '../../services/authService';
 import { getMyDonorProfile, updateMyDonorProfile } from '../../services/donorService';
 
 function MyProfile() {
+  const { updateUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [emailNotice, setEmailNotice] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -59,25 +62,36 @@ function MyProfile() {
     setError('');
     setSaved(false);
     try {
-      const donor = await updateMyDonorProfile({
-        blood_group: profile.bloodGroup,
-        city: profile.location || null,
-        available_to_contact: profile.availability === 'Available',
-      });
-      setProfile((current) => ({
-        ...current,
+      const [user, donor] = await Promise.all([
+        updateCurrentUser({
+          full_name: (profile.fullName || '').trim(),
+          email: (profile.email || '').trim(),
+          phone_number: (profile.phone || '').trim() || null,
+        }),
+        updateMyDonorProfile({
+          blood_group: profile.bloodGroup,
+          city: (profile.location || '').trim() || null,
+          available_to_contact: profile.availability === 'Available',
+        }),
+      ]);
+      if (updateUser) updateUser(user);
+      const emailChanged = user.email !== savedProfile?.email;
+      const updatedFields = {
+        fullName: user.full_name,
+        email: user.email,
+        verified: user.is_email_verified ? 'Email verified' : 'Email not verified',
+        phone: user.phone_number || '',
         bloodGroup: donor.blood_group,
         location: donor.city || '',
         availability: donor.available_to_contact ? 'Available' : 'Unavailable',
-      }));
-      setSavedProfile((current) => ({
-        ...current,
-        bloodGroup: donor.blood_group,
-        location: donor.city || '',
-        availability: donor.available_to_contact ? 'Available' : 'Unavailable',
-      }));
+      };
+      setProfile((current) => ({ ...current, ...updatedFields }));
+      setSavedProfile((current) => ({ ...current, ...updatedFields }));
       setEditing(false);
       setSaved(true);
+      setEmailNotice(emailChanged
+        ? `A verification code was sent to ${user.email}. You will need to verify it the next time you log in.`
+        : '');
     } catch (saveError) {
       setError(saveError.message || 'Unable to save your profile.');
     } finally {
@@ -118,6 +132,8 @@ function MyProfile() {
     marginBottom: '22px',
   };
 
+  const editableFields = ['fullName', 'email', 'phone', 'location'];
+
   const field = (label, name, type = 'text') => (
     <div style={fieldStyle}>
       <label htmlFor={`profile-${name}`} style={labelStyle}>{label}</label>
@@ -127,9 +143,11 @@ function MyProfile() {
         name={name}
         value={profile[name]}
         onChange={handleChange}
-        disabled={!editing || saving || !['location'].includes(name)}
-        style={inputStyle(editing && name === 'location')}
-        required={name !== 'location'}
+        disabled={!editing || saving || !editableFields.includes(name)}
+        style={inputStyle(editing && editableFields.includes(name))}
+        required={name === 'fullName' || name === 'email'}
+        minLength={name === 'fullName' ? 2 : undefined}
+        maxLength={name === 'phone' ? 30 : name === 'location' ? 100 : 150}
       />
     </div>
   );
@@ -265,6 +283,7 @@ function MyProfile() {
           fontSize: '13px',
         }}>
           ✓ Your profile changes have been saved successfully!
+          {emailNotice && <p style={{ margin: '6px 0 0' }}>{emailNotice}</p>}
         </div>
       )}
 

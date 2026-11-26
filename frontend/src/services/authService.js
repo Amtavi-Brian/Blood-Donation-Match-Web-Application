@@ -66,3 +66,6 @@ export function resetPassword({ email, otp, newPassword }) {
 export function getCurrentUser(token) {
   return apiRequest("/users/me", { token });
 }
+export function updateCurrentUser(updates) {
+  return apiRequest("/users/me", { method: "PATCH", body: updates });
+}

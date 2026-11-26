@@ -6,7 +6,11 @@ from sqlalchemy.pool import StaticPool
 from app.db.base import Base
 from app.models.donor_profile import BloodGroup, DonorProfile
 from app.schemas.auth import UserCreate
-from app.services.user_service import create_user
+from app.services.user_service import (
+    EmailAlreadyInUseError,
+    create_user,
+    update_user_profile,
+)
 
 
 @pytest.fixture
@@ -58,3 +62,77 @@ def test_registration_creates_donor_profile(
     assert profile.consent_to_share_location is consent
     assert profile.latitude == latitude
     assert profile.longitude == longitude
+
+
+def test_update_user_profile_details(registration_db):
+    registration = UserCreate(
+        full_name="Original Name",
+        email="original@example.com",
+        phone_number="0700000000",
+        password="password123",
+        blood_group=BloodGroup.A_POSITIVE,
+    )
+    user = create_user(registration_db, registration)
+    user.is_email_verified = True
+    registration_db.commit()
+
+    updated, email_changed = update_user_profile(
+        registration_db,
+        user,
+        {"full_name": "Updated Name", "phone_number": "0799999999"},
+    )
+
+    assert not email_changed
+    assert updated.full_name == "Updated Name"
+    assert updated.phone_number == "0799999999"
+    assert updated.is_email_verified is True
+
+
+def test_update_user_profile_email_resets_verification(registration_db):
+    registration = UserCreate(
+        full_name="Email Test",
+        email="verified@example.com",
+        password="password123",
+        blood_group=BloodGroup.B_POSITIVE,
+    )
+    user = create_user(registration_db, registration)
+    user.is_email_verified = True
+    registration_db.commit()
+
+    updated, email_changed = update_user_profile(
+        registration_db,
+        user,
+        {"email": "newemail@example.com"},
+    )
+
+    assert email_changed
+    assert updated.email == "newemail@example.com"
+    assert updated.is_email_verified is False
+
+
+def test_update_user_profile_duplicate_email_raises_error(registration_db):
+    user1 = create_user(
+        registration_db,
+        UserCreate(
+            full_name="User One",
+            email="user1@example.com",
+            password="password123",
+            blood_group=BloodGroup.O_NEGATIVE,
+        ),
+    )
+    user2 = create_user(
+        registration_db,
+        UserCreate(
+            full_name="User Two",
+            email="user2@example.com",
+            password="password123",
+            blood_group=BloodGroup.O_POSITIVE,
+        ),
+    )
+
+    with pytest.raises(EmailAlreadyInUseError):
+        update_user_profile(
+            registration_db,
+            user2,
+            {"email": "user1@example.com"},
+        )

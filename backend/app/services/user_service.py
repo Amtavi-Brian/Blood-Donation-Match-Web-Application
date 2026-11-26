@@ -9,6 +9,10 @@ from app.models.user import User, UserRole
 from app.schemas.auth import UserCreate
 from app.schemas.hospital import HospitalStaffAccountCreate
 
+class EmailAlreadyInUseError(ValueError):
+    """Raised when a user tries to change to an email that is taken."""
+
+
 class EmailNotVerifiedError(Exception):
     """Raised when a user attempts to log in before email verification."""
 
@@ -279,3 +283,78 @@ def set_user_active_status(
     except Exception:
         db.rollback()
         raise
+
+
+def update_user_profile(
+    db: Session,
+    user: User,
+    update_data: dict,
+) -> tuple[User, bool]:
+    """Update the current user's own details and record the change.
+
+    Returns the user and whether the email address changed. A changed
+    email is marked unverified so the new address must be confirmed.
+    """
+
+    if "full_name" in update_data and update_data["full_name"] is not None:
+        update_data["full_name"] = update_data["full_name"].strip()
+
+    if "phone_number" in update_data:
+        phone = (update_data["phone_number"] or "").strip()
+        update_data["phone_number"] = phone or None
+
+    if update_data.get("email") is not None:
+        update_data["email"] = str(update_data["email"]).strip()
+
+    changed_fields = [
+        field
+        for field, value in update_data.items()
+        if getattr(user, field) != value
+    ]
+
+    if "email" in changed_fields:
+        taken = db.scalar(
+            select(User).where(
+                User.email == update_data["email"],
+                User.id != user.id,
+            )
+        )
+        if taken is not None:
+            raise EmailAlreadyInUseError(
+                "An account with this email already exists."
+            )
+
+    if not changed_fields:
+        return user, False
+
+    email_changed = "email" in changed_fields
+
+    try:
+        for field in changed_fields:
+            setattr(user, field, update_data[field])
+
+        if email_changed:
+            user.is_email_verified = False
+
+        db.add(
+            AuditLog(
+                user_id=user.id,
+                action="user_profile_updated",
+                entity_type="user",
+                entity_id=user.id,
+                description=(
+                    "Updated account fields: "
+                    + ", ".join(changed_fields)
+                    + "."
+                ),
+            )
+        )
+
+        db.commit()
+        db.refresh(user)
+
+    except Exception:
+        db.rollback()
+        raise
+
+    return user, email_changed

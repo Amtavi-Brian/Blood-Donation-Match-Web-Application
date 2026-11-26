@@ -10,6 +10,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings
 from app.db.base import Base
+from app.db.session import engine as app_engine
+
+# Use the same resolved URL as the app (SQLite paths are anchored to backend/).
+DATABASE_URL = app_engine.url.render_as_string(hide_password=False)
 import app.models
 config = context.config
 
@@ -22,7 +26,7 @@ target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=settings.DATABASE_URL,
+        url=DATABASE_URL,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -35,7 +39,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section) or {}
-    configuration["sqlalchemy.url"] = settings.DATABASE_URL
+    configuration["sqlalchemy.url"] = DATABASE_URL
 
     connectable = engine_from_config(
         configuration,
